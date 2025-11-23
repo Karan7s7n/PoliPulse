@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -71,3 +72,7 @@ export default defineConfig([
   },
 ])
 ```
+=======
+# PoliPulse
+PoliPulse – Policy Tracking Web App is a cloud-based insurance policy  management platform designed to help users efficiently store, track, and  manage all their insurance policies in one centralized location. 
+>>>>>>> 9560e4dfcdc023c77d47d301d767ff0a94ff8fdd
