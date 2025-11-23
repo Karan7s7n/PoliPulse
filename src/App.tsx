@@ -150,9 +150,8 @@ function App() {
                 session ? (
                   <AddEditPolicy
                     darkMode={darkMode}
-                    policies={policies}
-                    setPolicies={setPolicies}
-                  />
+                    initialPolicies={policies}
+                    setPolicies={setPolicies}                   />
                 ) : (
                   <Navigate to="/auth" replace />
                 )
@@ -165,7 +164,7 @@ function App() {
                 session ? (
                   <AddEditPolicy
                     darkMode={darkMode}
-                    policies={policies}
+                    initialPolicies={policies}
                     setPolicies={setPolicies}
                   />
                 ) : (

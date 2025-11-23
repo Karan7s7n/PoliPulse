@@ -131,7 +131,8 @@ function HolderDetails({ darkMode }: HolderDetailsProps) {
     filter === "All" ? true : getStatus(p.renewal_date) === filter
   );
 
-  const icons: Record<FilterKey, JSX.Element> = {
+  const icons: Record<FilterKey, React.ReactNode>
+ = {
     All: <FaClipboardList />,
     Active: <FaCheckCircle />,
     "Expiring Soon": <FaExclamationTriangle />,
@@ -231,7 +232,8 @@ function HolderDetails({ darkMode }: HolderDetailsProps) {
         { label: "Renewal Date", value: holder.renewal_date },
         { label: "Status", value: getStatus(holder.renewal_date) },
         { label: "Remarks", value: holder.remarks || "None" },
-        { label: "Member Since", value: holder.join_date || "N/A" }, // new detail for symmetry
+        { label: "Member Since", value: (holder as any).join_date || "N/A" },
+, // new detail for symmetry
       ].map((item, index) => (
         <div className="col-lg-3 col-md-4 col-sm-6 col-12" key={index}>
           <div
@@ -239,8 +241,8 @@ function HolderDetails({ darkMode }: HolderDetailsProps) {
               darkMode ? "text-white" : "text-dark"
             }`}
           >
-            <div className="text-muted mb-1 small">{item.label}</div>
-            <div className="fw-bold">{item.value || "N/A"}</div>
+            <div className="text-muted mb-1 small">{item!.label}</div>
+            <div className="fw-bold">{item!.value || "N/A"}</div>
           </div>
         </div>
       ))}

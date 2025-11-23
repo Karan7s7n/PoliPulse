@@ -159,7 +159,8 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
   };
 
   /** Icons */
-  const icons: Record<FilterKey, JSX.Element> = {
+  const icons: Record<FilterKey, React.ReactNode>
+= {
     All: <FaClipboardList />,
     Active: <FaCheckCircle />,
     "Expiring Soon": <FaExclamationTriangle />,

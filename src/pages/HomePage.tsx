@@ -168,7 +168,8 @@ useEffect(() => {
     expired: "bg-danger text-white",
   };
 
-  const icons: Record<FilterKey, JSX.Element> = {
+  const icons: Record<FilterKey, React.ReactNode>
+ = {
     all: <FaClipboardList />,
     active: <FaCheckCircle />,
     expiring: <FaExclamationTriangle />,
@@ -203,41 +204,46 @@ useEffect(() => {
         animate={{ opacity: 1, y: 0 }}
       >
         {/* 🔥 EXPIRING ALERT BANNER */}
-       {expiringPolicies.length > 0 && showExpiringAlert && (
-  <motion.div
-    className="shadow-lg position-relative mb-4"
-    style={{
-      cursor: "pointer",
-      borderRadius: 14,
-      backgroundColor: "#ff8c42", // 🔥 Modern Orange
-      color: "white",
-      padding: "18px 20px",
-    }}
-    onClick={handleExpiringAlertClick}
-    initial={{ opacity: 0, y: -20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-  >
-    {/* BIG CROSS ICON */}
-    <FaTimes
+       <AnimatePresence>
+  {expiringPolicies.length > 0 && showExpiringAlert && (
+    <motion.div
+      key="expiring-alert"
+      className="shadow-lg position-relative mb-4"
       style={{
-        position: "absolute",
-        top: 12,
-        right: 14,
-        fontSize: "28px",    // ⬅ BIG cross
         cursor: "pointer",
+        borderRadius: 14,
+        backgroundColor: "#ff8c42", // 🔥 Modern Orange
+        color: "white",
+        padding: "18px 20px",
       }}
-      onClick={(e) => {
-        e.stopPropagation();
-        setShowExpiringAlert(false);
-      }}
-    />
+      onClick={handleExpiringAlertClick}
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -25 }}  // ➜ Smooth fade+slide
+      transition={{ duration: 0.45 }} // ➜ Smooth timing
+    >
+      {/* BIG CROSS ICON */}
+      <FaTimes
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 14,
+          fontSize: "28px",
+          cursor: "pointer",
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowExpiringAlert(false);
+        }}
+      />
 
-    <h5 className="m-0 fw-bold" style={{ fontSize: "18px" }}>
-      ⚠️ {expiringPolicies.length} Policies Expiring Soon — Click to View
-    </h5>
-  </motion.div>
-)}
+      <h5 className="m-0 fw-bold" style={{ fontSize: "18px" }}>
+        ⚠️ {expiringPolicies.length} Policies Expiring Soon — Click to View
+      </h5>
+    </motion.div>
+  )}
+</AnimatePresence>
+
 
 
         {/* === HERO SECTION === */}

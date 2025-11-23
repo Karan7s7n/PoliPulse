@@ -50,6 +50,7 @@ const supabase = createClient(
 interface ReportsProps {
   darkMode: boolean;
   policies: Policy[];
+  initialPolicies?: Policy[];
 }
 
 function Reports({ darkMode }: ReportsProps) {
@@ -73,7 +74,7 @@ function Reports({ darkMode }: ReportsProps) {
 
   async function fetchReports() {
     setLoading(true);
-    const { data, error } = await supabase.from<Policy>("policy").select("*");
+    const { data, error } = await supabase.from("policy").select("*");
     if (error) {
       console.error(error);
       setError("Failed to fetch report data.");

@@ -169,11 +169,20 @@ export default function PolicyManagerUI(props: Props) {
 
   // stable setter passed to MemoFloatingInput to avoid new handler each render
   const setField = useCallback(
-    (name: string, value: any) => {
-      setPolicy((prev: any) => ({ ...prev, [name]: value }));
-    },
-    [setPolicy]
-  );
+  (name: string, value: any) => {
+    (setPolicy as React.Dispatch<React.SetStateAction<Omit<Policy, "id">>>)(
+      (prev: Omit<Policy, "id">): Omit<Policy, "id"> => ({
+        ...prev,
+        [name]: value,
+      })
+    );
+  },
+  []
+);
+
+
+
+
 
   // wrapper helpers to call provided props and show toasts
   const showToast = (message: string, variant: "success" | "danger" | "info" | "warning" = "success") => {

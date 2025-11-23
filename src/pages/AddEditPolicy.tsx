@@ -34,11 +34,12 @@ export default function PolicyManager({
   setPolicies,
 }: {
   darkMode: boolean;
+  policies?: Policy[];
   initialPolicies: Policy[];
   setPolicies: React.Dispatch<React.SetStateAction<Policy[]>>;
 }) {
   const [mode, setMode] = useState<Mode>("add");
-  const [, setLocalPolicies] = useState<Policy[]>(initialPolicies || []);
+  const [] = useState<Policy[]>(initialPolicies || []);
   const [policy, setPolicy] = useState<Omit<Policy, "id">>(emptyPolicy);
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
