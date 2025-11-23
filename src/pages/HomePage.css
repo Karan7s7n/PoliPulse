@@ -1,0 +1,197 @@
+/* Hero Section */
+/* Hero Section */
+.hero-section {
+  position: relative;
+  min-height: 60vh;
+  border-radius: 15px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.hero-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  filter: blur(50px) opacity(0.15);
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 2rem;
+}
+
+.hero-logo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1rem;
+}
+
+/* Quick Nav Cards */
+.quick-nav-card {
+  cursor: pointer;
+  border-radius: 15px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 200px;
+  transition: all 0.3s ease-in-out;
+}
+
+.quick-nav-card .icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Filter Cards Hover */
+.status-card {
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+.status-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
+
+/* Search Bar */
+.search-bar {
+  max-width: 800px;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+.light-input {
+  background-color: #f8f9fa;
+  color: #212529;
+  border: 1px solid #212529;
+}
+.hero-section {
+  min-height: 60vh;
+  position: relative;
+  overflow: hidden;
+  border-radius: 15px;
+  margin-bottom: 2rem;
+}
+
+.hero-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  filter: blur(50px) opacity(0.15);
+  z-index: 1;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 15px;
+  z-index: 2;
+  background-color: rgba(255,255,255,0.25);
+}
+
+.dark-mode .hero-overlay {
+  background-color: rgba(0,0,0,0.4);
+}
+
+.glass-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark-mode .glass-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  padding: 2rem;
+  color: inherit;
+}
+
+.hero-logo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1rem;
+}
+
+/* Quick Nav Cards */
+.quick-nav-card {
+  border-radius: 15px;
+  padding: 2rem;
+  color: white;
+  width: 100%;
+  max-width: 200px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.quick-nav-card .card-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Search Bar */
+.search-bar {
+  width: 100%;
+  max-width: 800px;
+  border-radius: 12px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+}
+
+.light-input {
+  background-color: #f8f9fa;
+  color: #212529;
+  border: 1px solid #212529;
+}
+
+.dark-input {
+  background-color: #1e1e1e;
+  color: #fff;
+  border: 1px solid #555;
+}
+
+/* Status Cards */
+.status-card {
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.status-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+}
+
+.selected-card {
+  border: 2px solid #000;
+}
+
+/* Splash screen */
+.splash-logo {
+  width: 150px;
+  height: 150px;
+  border-radius: 20%;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0 25px rgba(0,74,173,0.3);
+}
+
+.splash-title {
+  font-weight: bold;
+}
+
+.splash-text {
+  font-size: 1.2rem;
+}
