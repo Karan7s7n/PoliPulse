@@ -146,4 +146,5 @@ Multi-language support
 
 📄 License
 
-MIT License
+Made by Karan Singh Negi 
+All rights Reserved
