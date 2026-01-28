@@ -1,78 +1,149 @@
-<<<<<<< HEAD
-# React + TypeScript + Vite
+PoliPulse – Policy Management & Tracking System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+🚀 Project Overview
 
-Currently, two official plugins are available:
+PoliPulse is a full-stack policy management and tracking system built with React, TypeScript, and Supabase.
+It allows insurance agents and clients to manage policies, track renewals, and receive alerts for upcoming expirations in a clean, responsive, and interactive dashboard.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+🔑 Key Features
 
-## React Compiler
+User Authentication 
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Policy Management
 
-## Expanding the ESLint configuration
+CRUD operations for policies
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Automatic validation for policy fields (premium, dates, email, etc.)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Real-Time Alerts & Notifications
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Expiring policies notifications via toast alerts
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Search & Filter
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Search policies by client, policy number, or status
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Responsive UI
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-=======
-# PoliPulse
-PoliPulse – Policy Tracking Web App is a cloud-based insurance policy  management platform designed to help users efficiently store, track, and  manage all their insurance policies in one centralized location. 
->>>>>>> 9560e4dfcdc023c77d47d301d767ff0a94ff8fdd
+Built with React-Bootstrap and Tailwind CSS for mobile-first responsiveness
+
+🛠️ Tech Stack
+Layer	Technologies
+Frontend	React, TypeScript, TailwindCSS, React-Bootstrap
+Backend / Database	Supabase (PostgreSQL)
+Authentication	Supabase Auth
+State Management	React Hooks
+Hosting / Deployment	Vercel (Frontend), Supabase (Backend/DB)
+Version Control	Git, GitHub
+⚡ Functional Highlights
+Admin Dashboard
+
+View all policies and users
+
+Manage agents and clients
+
+Full CRUD access
+
+Agent Dashboard
+
+Add new policies
+
+Track clients’ policies
+
+Receive alerts for expiring policies
+
+Client Dashboard
+
+View personal policies
+
+Check renewal dates
+
+Download policy details
+
+🔒 Security & Validations
+
+Role-based route protection with ProtectedRoute component
+
+Strong form validations for policy entries:
+
+Email format, phone number length
+
+Premium > 0
+
+Policy & renewal dates validation
+
+.env variables secured via .gitignore
+
+📦 Setup Instructions (Local Development)
+
+Clone the repo:
+
+git clone https://github.com/Karan7s7n/PoliPulse.git
+cd PoliPulse
+
+
+Install dependencies:
+
+npm install
+
+
+Create .env file in project root:
+
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+
+Start development server:
+
+npm run dev
+
+
+Open http://localhost:5173 in your browser.
+
+📁 Database Schema (Supabase)
+
+Tables used:
+
+profiles → Users (id, full_name, role)
+
+policies → Policy details (policy_no, client_name, company, premium, dates, etc.)
+
+alerts → Expiration notifications
+
+other related tables → e.g., agents, clients (if implemented)
+
+🎯 Project Highlights for Recruiters
+
+React + TypeScript expertise
+
+Supabase integration with authentication and database
+
+Role-based access control
+
+Form validation & error handling
+
+Responsive UI & dashboard creation
+
+Clean Git history & deployable on Vercel
+
+🌐 Deployment
+
+Frontend hosted on Vercel
+
+Backend (database & auth) hosted on Supabase
+
+Continuous deployment via GitHub → Vercel integration
+
+🛠️ Future Enhancements
+
+Email notifications for expiring policies
+
+Export policies to PDF/Excel
+
+Integrate charts for policy statistics
+
+Multi-language support
+
+📄 License
+
+MIT License
