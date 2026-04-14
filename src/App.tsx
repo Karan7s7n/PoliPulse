@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import React, { useEffect, useState } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { supabase } from "./models/supabaseClient";
 
 import Navbar from "./components/Navbar";
@@ -12,29 +11,49 @@ import Settings from "./pages/Settings";
 import Reports from "./pages/Reports";
 import Profile, { ProfileProvider } from "./pages/Profile";
 import AuthPage from "./pages/AuthPage";
+import LandingPage from "./pages/LandingPage";
 import AddEditPolicy from "./pages/AddEditPolicy";
+import AdminPage from "./pages/AdminPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import { useTheme } from "./context/ThemeContext";
 import type { Policy } from "./models/supabaseTypes";
 
-// 🔹 Import background images
+// Background images
 import darkBg from "./assets/dback.jpg";
-import lightBg from "./assets/lback.jpg";
+import lightBg from "./assets/lbackg.jfif";
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  const { isDark } = useTheme();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [session, setSession] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const isAdminPage = location.pathname === "/admin";
 
-  // 🔐 Authentication logic
+  // 🔐 Auth Logic
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+
+      // ✅ FIXED: Simple and reliable admin check
+      const isEmailAdmin = data.session?.user?.email === "karansinghn.07@gmail.com";
+      setIsAdmin(isEmailAdmin);
+
       setLoading(false);
-    });
+    };
+
+    init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
+
+        // ✅ Keep admin in sync
+        const isEmailAdmin = session?.user?.email === "karansinghn.07@gmail.com";
+        setIsAdmin(isEmailAdmin);
       }
     );
 
@@ -43,117 +62,99 @@ function App() {
     };
   }, []);
 
-  // ⏳ Session loading
+  // ⏳ Loading state
   if (loading) {
     return (
-      <motion.div
-        className={`flex items-center justify-center min-h-screen ${
-          darkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900"
-        }`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        <motion.div
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 1.5 }}
-          className="text-lg font-semibold"
-        >
-          Loading...
-        </motion.div>
-      </motion.div>
+      <div className="flex items-center justify-center min-h-screen text-lg">
+        Loading...
+      </div>
     );
   }
 
   return (
     <ProfileProvider>
       <div
-        className={`d-flex flex-column min-vh-100`}
+        className="flex flex-col min-h-screen"
         style={{
-          backgroundImage: `url(${darkMode ? darkBg : lightBg})`,
+          backgroundImage: `url(${isDark ? darkBg : lightBg})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
         }}
       >
-        {/* 🔝 Navbar only if logged in */}
-        {session && <Navbar darkMode={darkMode} />}
+        {/* 🔝 Navbar */}
+        {session && !isAdminPage && <Navbar />}
 
-        {/* 📄 Main content */}
-        <div className="flex-grow-1">
+        {/* 📄 ROUTES */}
+        <div
+          className="grow transition-all duration-300"
+          style={{
+            paddingTop: session && !isAdminPage ? "90px" : "0px",
+          }}
+        >
           <Routes>
-            {/* 🔐 Auth Page */}
-            <Route path="/auth" element={<AuthPage darkMode={darkMode} />} />
 
-            {/* 🏠 Protected Routes */}
+            <Route path="/" element={<LandingPage />} />
+
+            {/* Legal Pages */}
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+
+            {/* Auth */}
             <Route
-              path="/"
+              path="/auth"
+              element={
+                session ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <AuthPage />
+                )
+              }
+            />
+
+            {/* Dashboard */}
+            <Route
+              path="/dashboard"
               element={
                 session ? (
                   <HomePage
-                    darkMode={darkMode}
                     policies={policies}
                     setPolicies={setPolicies}
                   />
                 ) : (
-                  <Navigate to="/auth" replace />
+                  <Navigate to="/" replace />
                 )
               }
             />
 
-            <Route
-              path="/holder/:id"
-              element={
-                session ? (
-                  <HolderDetails darkMode={darkMode} />
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
-              }
-            />
+            {/* Protected Routes */}
+            {(
+              [
+                ["/holder/:id", <HolderDetails />],
+                ["/company/:id", <CompanyDetails />],
+                ["/settings", <Settings />],
+                ["/reports", <Reports policies={policies} setPolicies={setPolicies} />],
+                ["/profile", <Profile />],
+              ] as Array<[string, React.ReactNode]>
+            ).map(([path, element]) => (
+              <Route
+                key={path}
+                path={path}
+                element={session ? (element as React.ReactElement) : <Navigate to="/" replace />}
+              />
+            ))}
 
-            <Route
-              path="/company/:id"
-              element={
-                session ? (
-                  <CompanyDetails darkMode={darkMode} />
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
-              }
-            />
-
-            <Route
-              path="/settings"
-              element={
-                session ? (
-                  <Settings darkMode={darkMode} setDarkMode={setDarkMode} />
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
-              }
-            />
-
-            <Route
-              path="/reports"
-              element={
-                session ? (
-                  <Reports darkMode={darkMode} policies={policies} />
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
-              }
-            />
-
+            {/* Add/Edit */}
             <Route
               path="/add"
               element={
                 session ? (
                   <AddEditPolicy
-                    darkMode={darkMode}
                     initialPolicies={policies}
-                    setPolicies={setPolicies}                   />
+                    setPolicies={setPolicies}
+                  />
                 ) : (
-                  <Navigate to="/auth" replace />
+                  <Navigate to="/" replace />
                 )
               }
             />
@@ -163,38 +164,42 @@ function App() {
               element={
                 session ? (
                   <AddEditPolicy
-                    darkMode={darkMode}
                     initialPolicies={policies}
                     setPolicies={setPolicies}
                   />
                 ) : (
-                  <Navigate to="/auth" replace />
+                  <Navigate to="/" replace />
                 )
               }
             />
 
+            {/* 🔥 ADMIN ROUTE (FIXED) */}
             <Route
-              path="/profile"
+              path="/admin"
               element={
-                session ? <Profile darkMode={darkMode} /> : <Navigate to="/auth" replace />
+                session ? (
+                  isAdmin ? (
+                    <AdminPage setIsAdmin={setIsAdmin} />
+                  ) : (
+                    <Navigate to="/dashboard" replace />   // ✅ FIXED HERE
+                  )
+                ) : (
+                  <Navigate to="/" replace />
+                )
               }
             />
 
-            {/* Default redirect */}
+            {/* Fallback */}
             <Route
               path="*"
-              element={<Navigate to={session ? "/" : "/auth"} replace />}
+              element={<Navigate to={session ? "/dashboard" : "/"} replace />}
             />
           </Routes>
         </div>
 
-        {/*  Footer  */}
-        {session && (
-          <Footer
-            version="v1.0.0"
-            darkMode={darkMode}
-            setDarkMode={setDarkMode} 
-          />
+        {/* Footer */}
+        {session && !isAdminPage && (
+          <Footer version="v1.0.0" />
         )}
       </div>
     </ProfileProvider>

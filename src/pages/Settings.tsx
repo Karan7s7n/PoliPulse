@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../models/supabaseClient";
 import { useProfile } from "./Profile";
 import {
   FaCog,
@@ -11,36 +11,22 @@ import {
   FaEdit,
   FaGlobe,
   FaClock,
+  FaMoon,
+  FaSun,
+  FaSave
 } from "react-icons/fa";
-import { Button, Form, Card } from "react-bootstrap";
-import darkLogo from "../assets/logo-dark.png";
-import lightLogo from "../assets/logo-light.png";
+import { useTheme } from "../context/ThemeContext";
 
-// ✅ Supabase init
-const supabase = createClient(
-  "https://shmvmxxhxvrnhlwdjcmp.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNobXZteHhoeHZybmhsd2RqY21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDAyMzMsImV4cCI6MjA3NTQ3NjIzM30.HpC27sRY0sxlz6QzqdKCzJJpDRnHEFT2uGcPl-gXo48"
-);
+interface SettingsProps {}
 
-interface SettingsProps {
-  darkMode: boolean;
-  setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-const Settings: React.FC<SettingsProps> = ({ darkMode, setDarkMode }) => {
+const Settings: React.FC<SettingsProps> = () => {
+  const { isDark, toggleTheme } = useTheme();
   const { profile, setProfile, loadingProfile } = useProfile();
 
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState("");
-  const [showSplash, setShowSplash] = useState(true);
   const [language, setLanguage] = useState("English");
-  const [timezone, setTimezone] = useState("UTC");
-
-  // Splash screen
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
+  const [timezone, setTimezone] = useState("IST");
 
   const handleSaveProfile = async () => {
     if (!profile) return;
@@ -56,190 +42,209 @@ const Settings: React.FC<SettingsProps> = ({ darkMode, setDarkMode }) => {
     if (!error) {
       setMessage("✅ Profile updated successfully!");
       setIsEditing(false);
+      setTimeout(() => setMessage(""), 3000);
     } else {
       setMessage("❌ Failed to update profile.");
     }
   };
 
-  // Splash Screen
-  if (showSplash) {
-    return (
-      <motion.div
-        className={`d-flex flex-column justify-content-center align-items-center min-vh-100 ${
-          darkMode ? "bg-dark text-light" : "bg-light text-dark"
-        }`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        <motion.img
-          src={darkMode ? darkLogo : lightLogo}
-          alt="PoliPulse Logo"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          style={{ width: 100, height: 100 }}
-          className="mb-3"
-        />
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fw-bold"
-        >
-          PoliPulse
-        </motion.h1>
-      </motion.div>
-    );
-  }
-
   if (loadingProfile)
     return (
-      <div className="text-center mt-5">
-        <div className="spinner-border text-primary" role="status"></div>
-        <p className="mt-3">Loading profile...</p>
+      <div className={`flex flex-col items-center justify-center min-h-[400px] ${isDark ? "text-white" : "text-slate-900"}`}>
+        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-6 font-black uppercase tracking-widest text-[10px] opacity-40">Syncing Profile Data</p>
       </div>
     );
 
   if (!profile)
     return (
-      <div className="text-center mt-5 text-danger">
-        <p>No profile data found. Please log in again.</p>
+      <div className="text-center mt-20 text-rose-500 font-bold">
+        <p>Authentication error. Please re-authenticate.</p>
       </div>
     );
+
+  const cardClass = `p-10 rounded-[3rem] shadow-2xl border transition-all duration-500 ${isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-slate-100"}`;
+  const inputClass = `w-full px-6 py-4 rounded-2xl border outline-none font-bold transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-600"}`;
+  const labelClass = `text-[10px] uppercase font-black tracking-[0.2em] opacity-40 mb-3 block ml-2 ${isDark ? "text-white" : "text-slate-900"}`;
 
   return (
     <AnimatePresence>
       <motion.div
-        className={`container py-5 ${darkMode ? "text-light" : "text-dark"}`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        className="container mx-auto px-6 py-12 max-w-5xl"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
       >
-        <h1 className="text-center fw-bold mb-5">
-          <FaCog className="me-2" /> Settings
-        </h1>
-
-        {/* 🌟 General Settings */}
-        <Card
-          className={`mb-4 p-4 shadow-lg border-0 ${
-            darkMode ? "bg-dark text-light" : "bg-white text-dark"
-          }`}
-          style={{
-            borderRadius: "16px",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-          }}
-        >
-          <h4 className="fw-bold mb-3">General Settings</h4>
-          <hr />
-          <Form.Check
-            type="switch"
-            id="dark-mode-switch"
-            label="Enable Dark Mode"
-            checked={darkMode}
-            onChange={() => setDarkMode(!darkMode)}
-            className="mb-3"
-          />
-          <Form.Group className="mb-3">
-            <Form.Label>
-              <FaClock className="me-2" /> Timezone
-            </Form.Label>
-            <Form.Select
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-            >
-              <option value="UTC">UTC</option>
-              <option value="IST">India Standard Time (IST)</option>
-              <option value="EST">Eastern Time (EST)</option>
-              <option value="PST">Pacific Time (PST)</option>
-            </Form.Select>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>
-              <FaGlobe className="me-2" /> Language
-            </Form.Label>
-            <Form.Select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              <option value="English">English</option>
-              <option value="Hindi">Hindi</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-            </Form.Select>
-          </Form.Group>
-        </Card>
-
-        {/* 👤 Profile Settings */}
-        <Card
-          className={`mb-4 p-4 shadow-lg border-0 ${
-            darkMode ? "bg-dark text-light" : "bg-white text-dark"
-          }`}
-          style={{
-            borderRadius: "16px",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-          }}
-        >
-          <h4 className="fw-bold mb-3">Profile Information</h4>
-          <hr />
-          <div className="d-flex align-items-center mb-4">
-            <FaUserCircle size={80} className="me-3" />
-            <div>
-              <h5 className="mb-1">{profile.name || "Unnamed User"}</h5>
-              <p className="mb-0 text-muted">{profile.email}</p>
+        <div className="flex flex-col items-center mb-16 text-center">
+            <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center text-3xl mb-6 shadow-2xl ${isDark ? 'bg-zinc-900 text-indigo-400 border border-white/5' : 'bg-white text-indigo-600 border border-black/5'}`}>
+                <FaCog />
             </div>
-          </div>
+            <h1 className={`font-black text-5xl tracking-tighter ${isDark ? "text-white" : "text-slate-900"}`}>
+                System Preference
+            </h1>
+            <p className="mt-2 font-black uppercase tracking-[0.2em] text-[10px] opacity-40 text-indigo-500">Configure your PoliPulse experience</p>
+        </div>
 
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>
-                <FaEnvelope className="me-2" /> Email
-              </Form.Label>
-              <Form.Control type="email" value={profile.email} disabled />
-            </Form.Group>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* 🌟 Interface Settings */}
+            <div className="lg:col-span-5 flex flex-col gap-8">
+                <div className={cardClass}>
+                    <h4 className={`font-black mb-8 text-xl tracking-tight flex items-center gap-3 ${isDark ? "text-white" : "text-slate-900"}`}>
+                        <span className="w-1 h-6 bg-indigo-600 rounded-full"></span>
+                        Interface
+                    </h4>
+                    
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between p-6 rounded-3xl bg-indigo-600/5 border border-indigo-600/10">
+                            <div>
+                                <h5 className="font-black text-xs uppercase tracking-widest m-0">Visual Theme</h5>
+                                <p className="text-[10px] opacity-60 m-0 mt-1 uppercase tracking-widest font-bold">{isDark ? "Night Mode Active" : "Day Mode Active"}</p>
+                            </div>
+                            <button 
+                                onClick={toggleTheme}
+                                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all active:scale-90 ${isDark ? 'bg-zinc-800 text-amber-400' : 'bg-white text-indigo-600 shadow-lg'}`}
+                            >
+                                {isDark ? <FaMoon /> : <FaSun />}
+                            </button>
+                        </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>
-                <FaPhone className="me-2" /> Phone
-              </Form.Label>
-              <Form.Control
-                type="text"
-                value={profile.phone || ""}
-                onChange={(e) =>
-                  setProfile({ ...profile, phone: e.target.value })
-                }
-                disabled={!isEditing}
-              />
-            </Form.Group>
+                        <div className="space-y-4">
+                            <label className={labelClass}>
+                                <FaClock className="inline mr-2" /> Global Timezone
+                            </label>
+                            <select
+                                value={timezone}
+                                onChange={(e) => setTimezone(e.target.value)}
+                                className={inputClass}
+                            >
+                                <option value="UTC">UTC (Universal)</option>
+                                <option value="IST">Asia/Kolkata (IST)</option>
+                                <option value="EST">America/New_York (EST)</option>
+                                <option value="PST">America/Los_Angeles (PST)</option>
+                            </select>
+                        </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>
-                <FaMapMarkerAlt className="me-2" /> Address
-              </Form.Label>
-              <Form.Control
-                type="text"
-                value={profile.address || ""}
-                onChange={(e) =>
-                  setProfile({ ...profile, address: e.target.value })
-                }
-                disabled={!isEditing}
-              />
-            </Form.Group>
-
-            <div className="d-flex justify-content-between align-items-center mt-3">
-              <Button
-                variant={isEditing ? "success" : "primary"}
-                onClick={() =>
-                  isEditing ? handleSaveProfile() : setIsEditing(true)
-                }
-              >
-                {isEditing ? "Save Changes" : "Edit Profile"} <FaEdit className="ms-2" />
-              </Button>
-              <p className="mb-0 text-success">{message}</p>
+                        <div className="space-y-4">
+                            <label className={labelClass}>
+                                <FaGlobe className="inline mr-2" /> System Language
+                            </label>
+                            <select
+                                value={language}
+                                onChange={(e) => setLanguage(e.target.value)}
+                                className={inputClass}
+                            >
+                                <option value="English">English (Global)</option>
+                                <option value="Hindi">Hindi (In-Review)</option>
+                                <option value="Spanish">Español</option>
+                                <option value="French">Français</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </Form>
-        </Card>
 
-        {/* 🔔 Notifications */}
-        
+            {/* 👤 Identity Settings */}
+            <div className="lg:col-span-7">
+                <div className={cardClass}>
+                    <div className="flex justify-between items-center mb-10">
+                        <h4 className={`font-black text-xl tracking-tight flex items-center gap-3 ${isDark ? "text-white" : "text-slate-900"}`}>
+                            <span className="w-1 h-6 bg-emerald-600 rounded-full"></span>
+                            Identity
+                        </h4>
+                        {!isEditing && (
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                className={`p-4 rounded-2xl transition-all active:scale-95 ${isDark ? 'bg-white/5 border border-white/5 text-indigo-400 hover:bg-white/10' : 'bg-slate-50 border border-black/5 text-indigo-600 hover:bg-slate-100'}`}
+                            >
+                                <FaEdit size={20} />
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-6 mb-12 p-6 rounded-[2.5rem] bg-gradient-to-br from-indigo-600/5 to-purple-600/5 border border-indigo-600/5">
+                        <div className="relative group">
+                            <FaUserCircle size={84} className="text-indigo-600 transition-transform group-hover:scale-105" />
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-4 border-white dark:border-zinc-900 shadow-xl"></div>
+                        </div>
+                        <div>
+                            <h5 className={`font-black text-3xl tracking-tighter m-0 ${isDark ? "text-white" : "text-slate-900"}`}>{profile.name || "Access ID: Required"}</h5>
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] opacity-40 uppercase tracking-widest text-indigo-500">{profile.email}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <label className={labelClass}><FaEnvelope className="inline mr-2" /> Gateway Email</label>
+                            <input 
+                                type="email" 
+                                value={profile.email} 
+                                disabled 
+                                className={`${inputClass} opacity-50 cursor-not-allowed`}
+                            />
+                        </div>
+
+                        <div className="space-y-4">
+                            <label className={labelClass}><FaPhone className="inline mr-2" /> Secure Terminal</label>
+                            <input
+                                type="text"
+                                value={profile.phone || ""}
+                                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                                disabled={!isEditing}
+                                className={inputClass}
+                                placeholder="+91 XXXXX XXXXX"
+                            />
+                        </div>
+
+                        <div className="space-y-4 md:col-span-2">
+                            <label className={labelClass}><FaMapMarkerAlt className="inline mr-2" /> Global Address</label>
+                            <input
+                                type="text"
+                                value={profile.address || ""}
+                                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                                disabled={!isEditing}
+                                className={inputClass}
+                                placeholder="HQ / Residential Address"
+                            />
+                        </div>
+                    </div>
+
+                    <AnimatePresence>
+                        {isEditing && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-12 flex items-center justify-between gap-4 border-t border-white/5 pt-10"
+                            >
+                                <button
+                                    onClick={() => setIsEditing(false)}
+                                    className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] opacity-40 hover:opacity-100 transition-all ${isDark ? 'text-white' : 'text-slate-900'}`}
+                                >
+                                    Cancel Changes
+                                </button>
+                                <button
+                                    className="flex items-center gap-3 px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl shadow-indigo-600/30 transition-all transform hover:-translate-y-1 active:scale-95"
+                                    onClick={handleSaveProfile}
+                                >
+                                    Commit Updates <FaSave />
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {message && (
+                        <motion.p 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="mt-8 text-center text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 py-4 rounded-xl"
+                        >
+                            {message}
+                        </motion.p>
+                    )}
+                </div>
+            </div>
+        </div>
       </motion.div>
     </AnimatePresence>
   );

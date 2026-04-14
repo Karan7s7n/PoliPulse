@@ -1,31 +1,30 @@
 // src/components/PolicyManagerUI.tsx
 import React, { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+import { FaPlus, FaEdit, FaTrash, FaFileCsv, FaDownload } from "react-icons/fa";
 import {
-  Button,
   Card,
-  Form,
   Row,
   Col,
-  FloatingLabel,
+  Form,
   InputGroup,
   Spinner,
+  FloatingLabel,
   ListGroup,
-  Table,
-  Modal,
-  ProgressBar,
   Badge,
-  Toast,
+  ProgressBar,
+  Table,
   ToastContainer,
+  Toast,
 } from "react-bootstrap";
-import { FaPlus, FaEdit, FaTrash, FaFileCsv, FaDownload } from "react-icons/fa";
 import type { Policy } from "../models/supabaseTypes";
+import { useTheme } from "../context/ThemeContext";
 
 type Mode = "add" | "edit" | "delete" | "import";
 type CSVRow = Omit<Policy, "id"> & { __rowIndex?: number };
 
 interface Props {
-  darkMode: boolean;
   mode: Mode;
   setMode: (m: Mode) => void;
   policy: Omit<Policy, "id">;
@@ -64,12 +63,31 @@ interface Props {
   updateCsvRow: (rowIndex: number, newRow: CSVRow) => void;
 }
 
-/**
- * Memoized Floating Input component.
- * - Accepts stable `setField(name, value)` callback to avoid passing a new handler each render.
- * - Controlled value passed as prop.
- * - Memoized to avoid remounting which caused focus loss.
- */
+const TailwindModal = ({ show, onHide, title, children, footer }: any) => {
+  const { isDark } = useTheme();
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className={`rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] overflow-hidden ${isDark ? 'bg-zinc-900 border border-white/10' : 'bg-white'}`}>
+        <div className={`px-6 py-4 border-b flex justify-between items-center ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
+          <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h3>
+          <button onClick={onHide} className="text-slate-400 hover:text-rose-500 transition-colors text-xl font-bold">
+            ✕
+          </button>
+        </div>
+        <div className={`px-6 py-4 overflow-y-auto flex-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
+          {children}
+        </div>
+        {footer && (
+          <div className={`px-6 py-4 border-t flex justify-end gap-3 ${isDark ? 'border-zinc-800 bg-zinc-900/50' : 'border-slate-100 bg-slate-50'}`}>
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const MemoFloatingInput = React.memo(function MemoFloatingInput({
   label,
   name,
@@ -77,7 +95,6 @@ const MemoFloatingInput = React.memo(function MemoFloatingInput({
   rows,
   value,
   setField,
-  darkMode,
 }: {
   label: string;
   name: string;
@@ -85,9 +102,8 @@ const MemoFloatingInput = React.memo(function MemoFloatingInput({
   rows?: number;
   value: any;
   setField: (name: string, value: any) => void;
-  darkMode: boolean;
 }) {
-  // internal handler uses stable setField
+  const { isDark } = useTheme();
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const raw = (e.target as HTMLInputElement).value;
     const v = type === "number" ? (raw === "" ? "" : Number(raw)) : raw;
@@ -103,10 +119,10 @@ const MemoFloatingInput = React.memo(function MemoFloatingInput({
           name={name}
           value={value ?? ""}
           onChange={onChange}
-          className={darkMode ? "glass-input-dark" : "glass-input"}
+          className={isDark ? "glass-input-dark" : "glass-input"}
         />
       ) : type === "select" ? (
-        <Form.Select name={name} value={value ?? ""} onChange={onChange} className={darkMode ? "glass-input-dark" : "glass-input"}>
+        <Form.Select name={name} value={value ?? ""} onChange={onChange} className={isDark ? "glass-input-dark" : "glass-input"}>
           {/* options should be provided by the caller via children if needed */}
         </Form.Select>
       ) : (
@@ -115,7 +131,7 @@ const MemoFloatingInput = React.memo(function MemoFloatingInput({
           name={name}
           value={value ?? ""}
           onChange={onChange}
-          className={darkMode ? "glass-input-dark" : "glass-input"}
+          className={isDark ? "glass-input-dark" : "glass-input"}
         />
       )}
     </FloatingLabel>
@@ -123,8 +139,8 @@ const MemoFloatingInput = React.memo(function MemoFloatingInput({
 });
 
 export default function PolicyManagerUI(props: Props) {
+  const { isDark } = useTheme();
   const {
-    darkMode,
     mode,
     setMode,
     policy,
@@ -161,30 +177,23 @@ export default function PolicyManagerUI(props: Props) {
     updateCsvRow,
   } = props;
 
-  // internal toast state (bottom-center, 4s autohide)
   const [toastShow, setToastShow] = useState(false);
   const [toastMsg, setToastMsg] = useState<string>("");
   const [toastVariant, setToastVariant] = useState<"success" | "danger" | "info" | "warning">("success");
-  const toastDuration = 4000; // 4 seconds
+  const toastDuration = 4000;
 
-  // stable setter passed to MemoFloatingInput to avoid new handler each render
   const setField = useCallback(
-  (name: string, value: any) => {
-    (setPolicy as React.Dispatch<React.SetStateAction<Omit<Policy, "id">>>)(
-      (prev: Omit<Policy, "id">): Omit<Policy, "id"> => ({
-        ...prev,
-        [name]: value,
-      })
-    );
-  },
-  []
-);
+    (name: string, value: any) => {
+      (setPolicy as React.Dispatch<React.SetStateAction<Omit<Policy, "id">>>)(
+        (prev: Omit<Policy, "id">): Omit<Policy, "id"> => ({
+          ...prev,
+          [name]: value,
+        })
+      );
+    },
+    [setPolicy]
+  );
 
-
-
-
-
-  // wrapper helpers to call provided props and show toasts
   const showToast = (message: string, variant: "success" | "danger" | "info" | "warning" = "success") => {
     setToastMsg(message);
     setToastVariant(variant);
@@ -196,7 +205,6 @@ export default function PolicyManagerUI(props: Props) {
       await onAdd(e);
       showToast("Policy added successfully", "success");
     } catch (err: any) {
-      // keep original behavior; show toast for error too
       const m = err?.message ?? "Failed to add policy";
       showToast(m, "danger");
       throw err;
@@ -237,7 +245,6 @@ export default function PolicyManagerUI(props: Props) {
   };
 
   const handleClear = () => {
-    // keep exactly same behavior
     setPolicy({} as any);
     setQuery("");
     setErrorMsg(null);
@@ -261,7 +268,6 @@ export default function PolicyManagerUI(props: Props) {
   const handlePrepareImport = async () => {
     try {
       await onPrepareImport();
-      // If there are csvErrors we still consider preview done (caller populates csvErrors)
       if (Object.keys(csvErrors).length > 0) {
         showToast("Preview completed with some validation issues", "warning");
       } else {
@@ -294,7 +300,6 @@ export default function PolicyManagerUI(props: Props) {
     }
   };
 
-  // small motion variants for cards
   const cardVariants = {
     hidden: { opacity: 0, y: 8 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.26 } },
@@ -305,13 +310,12 @@ export default function PolicyManagerUI(props: Props) {
     <motion.div
       initial={{ opacity: 0.4, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`container my-4 ${darkMode ? "dark-mode" : ""}`}
+      className={`container my-4 ${isDark ? "dark-mode" : ""}`}
     >
-      {/* SUBNAV — pill tabs */}
       <div
         className="polipulse-subnav mb-3 d-flex justify-content-center gap-3 p-3 rounded-3"
         style={{
-          background: darkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+          background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
           backdropFilter: "blur(10px)",
         }}
       >
@@ -325,7 +329,6 @@ export default function PolicyManagerUI(props: Props) {
             key={t.key}
             onClick={() => {
               setMode(t.key as Mode);
-              // small reset handled by parent if needed
             }}
             className={`subnav-btn ${mode === t.key ? "active" : ""}`}
           >
@@ -334,11 +337,10 @@ export default function PolicyManagerUI(props: Props) {
         ))}
       </div>
 
-      {/* Animated area: show one panel at a time */}
       <AnimatePresence mode="wait">
         {(mode === "edit" || mode === "delete") && (
           <motion.div key="search" variants={cardVariants} initial="hidden" animate="visible" exit="exit">
-            <Card className={`mb-4 p-3 ${darkMode ? "glass-dark" : "glass-light"}`}>
+            <Card className={`mb-4 p-3 ${isDark ? "glass-dark" : "glass-light"}`}>
               <Row className="g-2 align-items-center">
                 <Col xs={12} md={7}>
                   <InputGroup>
@@ -346,15 +348,15 @@ export default function PolicyManagerUI(props: Props) {
                       placeholder="Search policy number..."
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      className={darkMode ? "glass-input-dark" : "glass-input"}
+                      className={isDark ? "glass-input-dark" : "glass-input"}
                     />
-                    <Button onClick={() => query && handleLoad(query)} disabled={!query || loading}>
+                    <button className="px-6 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-xl shadow-md transition-colors" onClick={() => query && handleLoad(query)} disabled={!query || loading}>
                       {loading ? <Spinner animation="border" size="sm" /> : "Load"}
-                    </Button>
+                    </button>
                   </InputGroup>
 
                   {suggestions.length > 0 && (
-                    <ListGroup className={`mt-2 ${darkMode ? "bg-dark border-secondary" : ""}`}>
+                    <ListGroup className={`mt-2 ${isDark ? "bg-dark border-secondary" : ""}`}>
                       {suggestions.map((s) => (
                         <ListGroup.Item
                           key={s}
@@ -363,7 +365,7 @@ export default function PolicyManagerUI(props: Props) {
                             setQuery(s);
                             handleLoad(s);
                           }}
-                          className={darkMode ? "bg-dark text-light" : ""}
+                          className={isDark ? "bg-dark text-light" : ""}
                         >
                           {s}
                         </ListGroup.Item>
@@ -374,24 +376,22 @@ export default function PolicyManagerUI(props: Props) {
 
                 <Col xs={12} md={5} className="text-md-end">
                   {mode === "edit" && (
-                    <Button
-                      className="me-2"
-                      onClick={() => {
-                        handleClear();
-                      }}
-                    >
-                      Clear
-                    </Button>
+                    <button className="px-6 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-xl shadow-md transition-colors me-2"
+                    onClick={() => {
+                      handleClear();
+                    }}
+                  >
+                    Clear
+                  </button>
                   )}
 
                   {mode === "delete" && (
-                    <Button variant="danger" onClick={handleDelete} disabled={loading || (!query && !selectedPolicyNo)}>
+                    <button className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-md transition-colors" onClick={handleDelete} disabled={loading || (!query && !selectedPolicyNo)}>
                       {loading ? <Spinner animation="border" size="sm" /> : "Delete"}
-                    </Button>
+                    </button>
                   )}
                 </Col>
               </Row>
-
               {errorMsg && <div className="text-danger mt-2">{errorMsg}</div>}
             </Card>
           </motion.div>
@@ -399,54 +399,46 @@ export default function PolicyManagerUI(props: Props) {
 
         {(mode === "add" || mode === "edit") && (
           <motion.form key="form" variants={cardVariants} initial="hidden" animate="visible" exit="exit" onSubmit={mode === "add" ? handleAdd : handleUpdate}>
-            {/* Client Info */}
-            <Card className={`mb-3 p-4 ${darkMode ? "glass-dark" : "glass-light"}`}>
+            <Card className={`mb-3 p-4 ${isDark ? "glass-dark" : "glass-light"}`}>
               <h5 className="section-title">Client Information</h5>
-              <Row className="g-3">
-                <Col md={6}>
-                  <MemoFloatingInput label="Client Name" name="client_name" value={(policy as any).client_name ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-                <Col md={6}>
-                  <MemoFloatingInput label="Nominee Name" name="nominee_name" value={(policy as any).nominee_name ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
-                <Col md={4}>
-                  <MemoFloatingInput label="DOB" name="dob" type="date" value={(policy as any).dob ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
-                <Col md={4}>
-                  <MemoFloatingInput label="Phone" name="phone_no" value={(policy as any).phone_no ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
-                <Col md={4}>
-                  <MemoFloatingInput label="Email" name="email" type="email" value={(policy as any).email ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
+              <div className="flex flex-wrap -mx-2 mb-4">
+                <div className="w-full md:w-1/2 px-2 mb-4">
+                  <MemoFloatingInput label="Client Name" name="client_name" value={(policy as any).client_name ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/2 px-2 mb-4">
+                  <MemoFloatingInput label="Nominee Name" name="nominee_name" value={(policy as any).nominee_name ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="DOB" name="dob" type="date" value={(policy as any).dob ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="Phone" name="phone_no" value={(policy as any).phone_no ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="Email" name="email" type="email" value={(policy as any).email ?? ""} setField={setField} />
+                </div>
                 <Col xs={12}>
-                  <MemoFloatingInput label="Address" name="address" type="textarea" rows={2} value={(policy as any).address ?? ""} setField={setField} darkMode={darkMode} />
+                  <MemoFloatingInput label="Address" name="address" type="textarea" rows={2} value={(policy as any).address ?? ""} setField={setField} />
                 </Col>
-              </Row>
+              </div>
             </Card>
 
-            {/* Policy Info */}
-            <Card className={`mb-3 p-4 ${darkMode ? "glass-dark" : "glass-light"}`}>
+            <Card className={`mb-3 p-4 ${isDark ? "glass-dark" : "glass-light"}`}>
               <h5 className="section-title">Policy Information</h5>
-              <Row className="g-3">
-                <Col md={4}>
-                  <MemoFloatingInput label="Policy No" name="policy_no" value={(policy as any).policy_no ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
-                <Col md={4}>
-                  <MemoFloatingInput label="Company Name" name="company_name" value={(policy as any).company_name ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
-                <Col md={4}>
+              <div className="flex flex-wrap -mx-2 mb-4">
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="Policy No" name="policy_no" value={(policy as any).policy_no ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="Company Name" name="company_name" value={(policy as any).company_name ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
                   <FloatingLabel label="Business Type" className="w-100">
                     <Form.Select
                       name="business_type"
                       value={(policy as any).business_type ?? ""}
                       onChange={(e) => setField("business_type", e.target.value)}
-                      className={darkMode ? "glass-input-dark" : "glass-input"}
+                      className={isDark ? "glass-input-dark" : "glass-input"}
                     >
                       <option value="">Select</option>
                       <option>Life Insurance</option>
@@ -457,50 +449,44 @@ export default function PolicyManagerUI(props: Props) {
                       <option>Home Insurance</option>
                     </Form.Select>
                   </FloatingLabel>
-                </Col>
-
-                <Col md={4}>
-                  <MemoFloatingInput label="Policy Type" name="policy_type" value={(policy as any).policy_type ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
-                <Col md={4}>
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="Policy Type" name="policy_type" value={(policy as any).policy_type ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
                   <FloatingLabel label="Premium (₹)" className="w-100">
                     <Form.Control
                       type="number"
                       name="premium"
                       value={(policy as any).premium ?? ""}
                       onChange={(e) => setField("premium", e.target.value === "" ? "" : Number(e.target.value))}
-                      className={darkMode ? "glass-input-dark" : "glass-input"}
+                      className={isDark ? "glass-input-dark" : "glass-input"}
                       min={0}
                     />
                   </FloatingLabel>
-                </Col>
-
-                <Col md={4}>
-                  <MemoFloatingInput label="Purchase Date" name="purchase_date" type="date" value={(policy as any).purchase_date ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
-                <Col md={4}>
-                  <MemoFloatingInput label="Renewal Date" name="renewal_date" type="date" value={(policy as any).renewal_date ?? ""} setField={setField} darkMode={darkMode} />
-                </Col>
-
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="Purchase Date" name="purchase_date" type="date" value={(policy as any).purchase_date ?? ""} setField={setField} />
+                </div>
+                <div className="w-full md:w-1/3 px-2 mb-4">
+                  <MemoFloatingInput label="Renewal Date" name="renewal_date" type="date" value={(policy as any).renewal_date ?? ""} setField={setField} />
+                </div>
                 <Col xs={12}>
-                  <MemoFloatingInput label="Remarks" name="remarks" type="textarea" rows={2} value={(policy as any).remarks ?? ""} setField={setField} darkMode={darkMode} />
+                  <MemoFloatingInput label="Remarks" name="remarks" type="textarea" rows={2} value={(policy as any).remarks ?? ""} setField={setField} />
                 </Col>
-
                 <Col xs={12} className="text-end">
-                  <Button type="submit" className="modern-submit" disabled={loading}>
+                  <button className="px-6 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-xl shadow-md transition-colors modern-submit" type="submit" disabled={loading}>
                     {loading ? <Spinner animation="border" size="sm" /> : mode === "add" ? "➕ Add Policy" : "💾 Update Policy"}
-                  </Button>
+                  </button>
                 </Col>
-              </Row>
+              </div>
             </Card>
           </motion.form>
         )}
 
         {mode === "import" && (
           <motion.div key="import" variants={cardVariants} initial="hidden" animate="visible" exit="exit">
-            <Card className={`mb-3 p-4 ${darkMode ? "glass-dark" : "glass-light"}`}>
+            <Card className={`mb-3 p-4 ${isDark ? "glass-dark" : "glass-light"}`}>
               <Row className="align-items-center">
                 <Col md={8}>
                   <h4 className="section-title">
@@ -508,12 +494,10 @@ export default function PolicyManagerUI(props: Props) {
                   </h4>
                   <small className="text-muted">Download template → upload CSV → preview → resolve duplicates → import</small>
                 </Col>
-
                 <Col md={4} className="text-end d-flex flex-column gap-2">
-                  <Button variant="outline-secondary" onClick={handleDownloadTemplate} className="w-100">
+                  <button className="px-6 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-xl shadow-md transition-colors w-100" onClick={handleDownloadTemplate}>
                     <FaDownload /> Template
-                  </Button>
-
+                  </button>
                   <label className="modern-file-input w-100">
                     <input
                       type="file"
@@ -527,20 +511,16 @@ export default function PolicyManagerUI(props: Props) {
                   </label>
                 </Col>
               </Row>
-
               <hr />
-
               <Row className="mb-3">
-                <Col>
-                  <div className="d-flex gap-2">
-                    <Button onClick={handlePrepareImport} disabled={csvRows.length === 0 || csvLoading}>
+                <Col xs={12}>
+                  <div className="flex gap-2">
+                    <button className="px-6 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-xl shadow-md transition-colors" onClick={handlePrepareImport} disabled={csvRows.length === 0 || csvLoading}>
                       {csvLoading ? <Spinner animation="border" size="sm" /> : "Preview & Validate"}
-                    </Button>
-
-                    <Button variant="outline-secondary" onClick={() => { window.location.reload(); showToast("Cleared import state", "info"); }}>
+                    </button>
+                    <button className="px-6 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-xl shadow-md transition-colors" onClick={() => { window.location.reload(); showToast("Cleared import state", "info"); }}>
                       Clear
-                    </Button>
-
+                    </button>
                     {importProgress > 0 && (
                       <div style={{ minWidth: 200 }}>
                         <ProgressBar now={importProgress} label={`${importProgress}%`} />
@@ -549,9 +529,8 @@ export default function PolicyManagerUI(props: Props) {
                   </div>
                 </Col>
               </Row>
-
               <div style={{ maxHeight: 360, overflow: "auto", borderRadius: 12 }}>
-                <Table bordered hover size="sm" className={`modern-table ${darkMode ? "table-dark" : ""}`}>
+                <Table bordered hover size="sm" className={`modern-table ${isDark ? "table-dark" : ""}`}>
                   <thead>
                     <tr>
                       <th>#</th>
@@ -577,7 +556,7 @@ export default function PolicyManagerUI(props: Props) {
                         const rowIndex = r.__rowIndex ?? idx;
                         const err = csvErrors[rowIndex];
                         return (
-                          <tr key={rowIndex} className={darkMode ? "text-light" : "text-dark"}>
+                          <tr key={rowIndex} className={isDark ? "text-light" : "text-dark"}>
                             <td>{rowIndex + 1}</td>
                             <td>{r.policy_no || "—"}</td>
                             <td>{r.client_name}</td>
@@ -587,16 +566,14 @@ export default function PolicyManagerUI(props: Props) {
                             <td>{r.renewal_date}</td>
                             <td>{err ? <Badge bg="danger">Invalid</Badge> : <Badge bg="success">OK</Badge>}</td>
                             <td>
-                              <Button
-                                size="sm"
-                                variant="outline-secondary"
+                              <button className="px-4 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg shadow-md transition-colors text-xs"
                                 onClick={() => {
                                   const updated = { ...r, client_name: prompt("Edit client name", r.client_name) ?? r.client_name };
                                   handleEditCsvRow(rowIndex, updated);
                                 }}
                               >
                                 Edit
-                              </Button>
+                              </button>
                             </td>
                           </tr>
                         );
@@ -610,34 +587,24 @@ export default function PolicyManagerUI(props: Props) {
         )}
       </AnimatePresence>
 
-      {/* POPUP */}
-      <Modal show={showPopup} onHide={() => setShowPopup(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Notice</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>{popupMessage}</Modal.Body>
-        <Modal.Footer>
-          <Button onClick={() => setShowPopup(false)}>OK</Button>
-        </Modal.Footer>
-      </Modal>
+      <TailwindModal show={showPopup} onHide={() => setShowPopup(false)} title="Notice">
+        <div>{popupMessage}</div>
+        <div className="mt-4 flex justify-end">
+          <button className="px-6 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-xl shadow-md transition-colors" onClick={() => setShowPopup(false)}>OK</button>
+        </div>
+      </TailwindModal>
 
-      {/* DUPLICATE MODAL */}
-      <Modal show={duplicateModalOpen} onHide={() => setDuplicateModalOpen(false)} centered size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Duplicates Found</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
+      <TailwindModal show={duplicateModalOpen} onHide={() => setDuplicateModalOpen(false)} title="Duplicates Found">
+        <div>
           <p>Found <strong>{duplicateSummary.existing.length}</strong> duplicates (existing policy numbers).</p>
-
-          <div className="d-flex gap-2 mb-3">
-            <Button variant={duplicateAction === "insert-only" ? "primary" : "outline-secondary"} onClick={() => setDuplicateAction("insert-only")}>Insert Only</Button>
-            <Button variant={duplicateAction === "update-existing" ? "primary" : "outline-secondary"} onClick={() => setDuplicateAction("update-existing")}>Update Existing</Button>
-            <Button variant={duplicateAction === "skip-duplicates" ? "primary" : "outline-secondary"} onClick={() => setDuplicateAction("skip-duplicates")}>Skip Duplicates</Button>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button className={`px-4 py-2 rounded-xl border font-bold transition-all ${duplicateAction === "insert-only" ? "bg-indigo-600 text-white" : "bg-white/5 border-white/10"}`} onClick={() => setDuplicateAction("insert-only")}>Insert Only</button>
+            <button className={`px-4 py-2 rounded-xl border font-bold transition-all ${duplicateAction === "update-existing" ? "bg-indigo-600 text-white" : "bg-white/5 border-white/10"}`} onClick={() => setDuplicateAction("update-existing")}>Update Existing</button>
+            <button className={`px-4 py-2 rounded-xl border font-bold transition-all ${duplicateAction === "skip-duplicates" ? "bg-indigo-600 text-white" : "bg-white/5 border-white/10"}`} onClick={() => setDuplicateAction("skip-duplicates")}>Skip Duplicates</button>
           </div>
-
           <div style={{ maxHeight: 240, overflow: "auto" }}>
-            <Table size="sm" bordered className={darkMode ? "table-dark" : ""}>
-              <thead>
+            <Table size="sm" bordered className={isDark ? "table-dark" : ""}>
+              <thead className={isDark ? 'bg-zinc-800' : 'bg-slate-50'}>
                 <tr><th>Policy No</th><th>Client (CSV)</th><th>Company (CSV)</th></tr>
               </thead>
               <tbody>
@@ -649,84 +616,72 @@ export default function PolicyManagerUI(props: Props) {
               </tbody>
             </Table>
           </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setDuplicateModalOpen(false)}>Cancel</Button>
-          <Button onClick={() => { handleDuplicateProceed(); }}>Proceed</Button>
-        </Modal.Footer>
-      </Modal>
+        </div>
+        <div className="mt-4 flex justify-end gap-3">
+          <button className="px-6 py-2 border border-white/10 font-bold rounded-xl" onClick={() => setDuplicateModalOpen(false)}>Cancel</button>
+          <button className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20" onClick={() => { handleDuplicateProceed(); }}>Proceed</button>
+        </div>
+      </TailwindModal>
 
-      {/* CONFIRM IMPORT */}
-      <Modal show={confirmImportOpen} onHide={() => setConfirmImportOpen(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirm Import</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
+      <TailwindModal show={confirmImportOpen} onHide={() => setConfirmImportOpen(false)} title="Confirm Import">
+        <div>
           <p>Import <strong>{csvRows.length}</strong> rows?</p>
-          <div className="small text-muted">Duplicate handling: <strong>{duplicateAction}</strong></div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setConfirmImportOpen(false)}>Cancel</Button>
-          <Button onClick={handleExecuteImport} disabled={csvLoading}>{csvLoading ? <Spinner animation="border" size="sm" /> : "Start Import"}</Button>
-        </Modal.Footer>
-      </Modal>
+          <div className="small text-muted">Duplicate handling: <strong className="text-indigo-500 uppercase">{duplicateAction}</strong></div>
+        </div>
+        <div className="mt-4 flex justify-end gap-3">
+          <button className="px-6 py-2 border border-white/10 font-bold rounded-xl" onClick={() => setConfirmImportOpen(false)}>Cancel</button>
+          <button className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20" onClick={handleExecuteImport} disabled={csvLoading}>{csvLoading ? <Spinner animation="border" size="sm" /> : "Start Import"}</button>
+        </div>
+      </TailwindModal>
 
-      {/* BOTTOM-CENTER TOAST (internal) */}
       <ToastContainer className="p-3" position="bottom-center">
         <Toast bg={toastVariant} onClose={() => setToastShow(false)} show={toastShow} autohide delay={toastDuration}>
           <Toast.Body className="text-white fw-semibold">{toastMsg}</Toast.Body>
         </Toast>
       </ToastContainer>
 
-      {/* STYLES */}
       <style>{`
-        /* Subnav */
         .polipulse-subnav { gap: 18px; }
         .subnav-btn {
-          padding: 8px 18px;
+          padding: 10px 22px;
           border-radius: 999px;
           border: none;
-          font-weight: 600;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          font-size: 11px;
           display: inline-flex;
           align-items: center;
           gap: 8px;
           cursor: pointer;
-          transition: transform .18s ease, box-shadow .18s ease;
-          background: transparent;
+          transition: all .25s ease;
+          background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"};
           color: inherit;
         }
         .subnav-btn.active {
-          background: linear-gradient(135deg,#0b3b75,#007bff);
+          background: #6366f1;
           color: white;
-          box-shadow: 0 8px 20px rgba(13,110,253,0.18);
-          transform: translateY(-3px);
+          box-shadow: 0 10px 25px rgba(99,102,241,0.3);
+          transform: translateY(-2px);
         }
 
-        /* Glass cards + inputs */
-        .glass-light { background: rgba(255,255,255,0.55); border-radius: 14px; border: 1px solid rgba(0,0,0,0.06); }
-        .glass-dark { background: rgba(10,10,10,0.55); border-radius: 14px; border: 1px solid rgba(255,255,255,0.04); }
-        .glass-card { border-radius: 14px; padding: 18px; }
-        .glass-input { border-radius: 10px !important; background: rgba(255,255,255,0.9) !important; color: inherit; }
-        .glass-input-dark { border-radius: 10px !important; background: rgba(0,0,0,0.65) !important; color: inherit; }
-
-        .modern-file-input { padding: 10px 14px; border-radius: 10px; border: 1px dashed rgba(0,0,0,0.08); text-align:center; cursor:pointer; background: rgba(255,255,255,0.03); }
+        .glass-light { background: rgba(255,255,255,0.8); border-radius: 2rem; border: 1px solid rgba(0,0,0,0.05); }
+        .glass-dark { background: rgba(24,24,27,0.8); border-radius: 2rem; border: 1px solid rgba(255,255,255,0.05); }
+        .glass-input { border-radius: 12px !important; border: 1px solid rgba(0,0,0,0.1) !important; padding: 12px !important; }
+        .glass-input-dark { border-radius: 12px !important; background: rgba(255,255,255,0.03) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; padding: 12px !important; }
+        
+        .modern-file-input { padding: 12px 18px; border-radius: 12px; border: 2px dashed rgba(99,102,241,0.2); text-align:center; cursor:pointer; font-weight: 700; transition: all 0.3s; }
+        .modern-file-input:hover { border-color: #6366f1; background: rgba(99,102,241,0.05); }
         .modern-file-input input { display:none; }
 
-        .modern-submit { padding: 10px 22px; border-radius: 12px; background: #0d6efd; color: white; border: none; font-weight: 700; }
+        .section-title { font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; font-size: 11px; opacity: 0.5; margin-bottom: 24px; }
 
-        .section-title { font-weight: 700; margin-bottom: 12px; }
+        .modern-table { border-radius: 1rem; overflow: hidden; border: none; }
+        .modern-table thead th { background: rgba(99,102,241,0.1); border: none; font-weight: 800; text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; padding: 16px; }
+        .modern-table tbody td { padding: 16px; font-weight: 600; font-size: 13px; border: none; }
 
-        .modern-table th, .modern-table td { vertical-align: middle; }
-
-        /* Dark mode theme overrides */
-        .dark-mode { color: #eaeaea; }
-        .dark-mode .glass-light { background: rgba(255,255,255,0.03); }
-        .dark-mode .glass-dark { background: rgba(10,10,10,0.7); }
-        .dark-mode .glass-input { background: rgba(255,255,255,0.04) !important; color: #eaeaea !important; }
-        .dark-mode .glass-input-dark { background: rgba(0,0,0,0.6) !important; color: #eaeaea !important; }
-        .dark-mode .card { color: #eaeaea; }
-        .dark-mode .table, .dark-mode .table td, .dark-mode .table th { color: #eaeaea; }
-        .dark-mode .btn-primary { background: #0d6efd; border-color:#0d6efd; color:#fff; }
+        .dark-mode { color: #fff; }
+        .dark-mode .table, .dark-mode .table td, .dark-mode .table th { color: #fff; }
       `}</style>
     </motion.div>
   );

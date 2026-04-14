@@ -7,6 +7,7 @@ import { supabase } from "../models/supabaseClient";
 import type { Policy } from "../models/supabaseTypes";
 import PolicyManagerUI from "../components/PolicyManagerUI";
 import Papa from "papaparse";
+import { useTheme } from "../context/ThemeContext";
 
 type Mode = "add" | "edit" | "delete" | "import";
 
@@ -29,17 +30,14 @@ const emptyPolicy: Omit<Policy, "id"> = {
 };
 
 export default function PolicyManager({
-  darkMode,
-  initialPolicies,
   setPolicies,
 }: {
-  darkMode: boolean;
   policies?: Policy[];
   initialPolicies: Policy[];
   setPolicies: React.Dispatch<React.SetStateAction<Policy[]>>;
 }) {
+  useTheme();
   const [mode, setMode] = useState<Mode>("add");
-  const [] = useState<Policy[]>(initialPolicies || []);
   const [policy, setPolicy] = useState<Omit<Policy, "id">>(emptyPolicy);
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
@@ -107,7 +105,6 @@ export default function PolicyManager({
     }
   };
 
-  // validation accepts Policy-like object
   const validatePolicyRow = (p: Omit<Policy, "id">) => {
     if (!p.client_name || String(p.client_name).trim() === "") return "Client name required";
     if (!p.policy_no || String(p.policy_no).trim() === "") return "Policy number required";
@@ -127,8 +124,8 @@ export default function PolicyManager({
     if (v) return setErrorMsg(v);
     setLoading(true);
     try {
-      // ensure no internal keys
-      const toInsert = { ...policy } as any;
+      const { data: { user } } = await supabase.auth.getUser();
+      const toInsert = { ...policy, user_id: user?.id } as any;
       delete toInsert.__rowIndex;
       const { data, error } = await supabase.from("policy").insert([toInsert]).select();
       if (error) throw error;
@@ -203,21 +200,7 @@ export default function PolicyManager({
       "remarks",
     ];
     const sample = [
-      "John Doe",
-      "Jane Doe",
-      "1980-07-01",
-      "9876543210",
-      "john@example.com",
-      "Mumbai",
-      "Individual",
-      "Life Insurance",
-      "2025-01-01",
-      "POL12345",
-      "Acme Insurers",
-      "Term",
-      "12000",
-      "2026-01-01",
-      "N/A",
+      "John Doe", "Jane Doe", "1980-07-01", "9876543210", "john@example.com", "Mumbai", "Individual", "Life Insurance", "2025-01-01", "POL12345", "Acme Insurers", "Term", "12000", "2026-01-01", "N/A",
     ];
     const csv = [headers.join(","), sample.join(",")].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -239,7 +222,6 @@ export default function PolicyManager({
       skipEmptyLines: true,
       transformHeader: (h: string) => (h ? h.trim() : h),
       complete: (res) => {
-        // map each row, trim string values and convert premium
         const rows: CSVRow[] = (res.data as any[]).map((rawRow: any, idx: number) => {
           const normalized: any = {};
           Object.entries(rawRow || {}).forEach(([k, v]) => {
@@ -248,7 +230,6 @@ export default function PolicyManager({
             normalized[key] = val;
           });
 
-          // Ensure shape matches expected columns
           const row: CSVRow = {
             client_name: normalized.client_name ?? "",
             nominee_name: normalized.nominee_name ?? "",
@@ -279,7 +260,6 @@ export default function PolicyManager({
 
         setCsvErrors(errs);
         setCsvRows(rows);
-        // if errors exist, set a higher-level message so UI can show it
         if (Object.keys(errs).length) setErrorMsg("CSV has validation errors. Fix rows before importing.");
       },
       error: (err) => {
@@ -325,7 +305,6 @@ export default function PolicyManager({
     setDuplicateSummary({ existing: existingRows, incoming: incomingRows });
 
     if (existingRows.length) {
-      // prompt user choice UI (modal) will decide duplicateAction
       setDuplicateModalOpen(true);
     } else {
       setDuplicateAction("insert-only");
@@ -338,25 +317,22 @@ export default function PolicyManager({
     setImportProgress(0);
     setErrorMsg(null);
 
-    // re-check duplicates from server to avoid race conditions
     const existingRaw = await findDuplicates(csvRows);
     const existMap = new Map(existingRaw.map((e: any) => [e.policy_no, e]));
 
-    // build tasks using csvRows but only include actions based on duplicateAction
     const tasks: { type: "insert" | "update"; row: CSVRow }[] = [];
     for (const r of csvRows) {
       if (!existMap.has(r.policy_no)) {
         tasks.push({ type: "insert", row: r });
       } else {
         if (duplicateAction === "update-existing") tasks.push({ type: "update", row: r });
-        // if skip-duplicates -> do nothing
       }
     }
 
     const total = tasks.length;
     if (!total) {
       setCsvLoading(false);
-      setPopupMessage("No rows to import (all duplicates skipped or nothing to insert).");
+      setPopupMessage("No rows to import.");
       setShowPopup(true);
       setConfirmImportOpen(false);
       setDuplicateModalOpen(false);
@@ -367,15 +343,14 @@ export default function PolicyManager({
     const failedRows: { rowIndex?: number; error: string }[] = [];
 
     for (const t of tasks) {
-      // copy row and remove internal fields
-      const rowCopy: any = { ...t.row };
+      const { data: { user } } = await supabase.auth.getUser();
+      const rowCopy: any = { ...t.row, user_id: user?.id };
       const rowIndex = rowCopy.__rowIndex;
       delete rowCopy.__rowIndex;
 
-      // ensure no undefined values and trim strings
       Object.entries(rowCopy).forEach(([k, v]) => {
         if (typeof v === "string") rowCopy[k] = v.trim();
-        if (v === "") rowCopy[k] = null; // normalize empty strings to null if you prefer
+        if (v === "") rowCopy[k] = null;
       });
 
       try {
@@ -395,7 +370,6 @@ export default function PolicyManager({
       }
     }
 
-    // refresh affected rows in local state if any succeeded
     const affectedNos = tasks.map((t) => t.row.policy_no);
     if (affectedNos.length) {
       const { data, error } = await supabase.from("policy").select("*").in("policy_no", affectedNos);
@@ -408,16 +382,13 @@ export default function PolicyManager({
       }
     }
 
-    // show result
     if (failedRows.length) {
-      setErrorMsg(`Import completed with ${failedRows.length} failed rows. Check console for details.`);
-      console.error("Failed import rows:", failedRows);
+      setErrorMsg(`Import completed with ${failedRows.length} failed rows.`);
     } else {
       setPopupMessage("CSV import completed");
       setShowPopup(true);
     }
 
-    // cleanup UI state
     setCsvRows([]);
     setCsvErrors({});
     setDuplicateModalOpen(false);
@@ -439,7 +410,6 @@ export default function PolicyManager({
 
   return (
     <PolicyManagerUI
-      darkMode={darkMode}
       mode={mode}
       setMode={(m) => {
         setMode(m);

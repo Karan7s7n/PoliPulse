@@ -1,77 +1,77 @@
-import React, { useEffect, useState, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import React, { useEffect, useState } from "react";
+import { supabase } from "../models/supabaseClient";
 import type { Policy } from "../models/supabaseTypes";
 import PolicyTable from "../components/PolicyTable";
 import {
   FaClipboardList,
-  FaCheckCircle,
-  FaExclamationTriangle,
-  FaTimesCircle,
   FaUser,
   FaCog,
   FaChartBar,
   FaSignOutAlt,
   FaEdit,
-  FaTimes,
 } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import "./HomePage.css";
-
-const supabase = createClient(
-  "https://shmvmxxhxvrnhlwdjcmp.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNobXZteHhoeHZybmhsd2RqY21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDAyMzMsImV4cCI6MjA3NTQ3NjIzM30.HpC27sRY0sxlz6QzqdKCzJJpDRnHEFT2uGcPl-gXo48"
-);
+import { useTheme } from "../context/ThemeContext";
 
 interface Props {
-  darkMode: boolean;
-  policies?: Policy[];
-  setPolicies?: React.Dispatch<React.SetStateAction<Policy[]>>;
+  policies: Policy[];
+  setPolicies: React.Dispatch<React.SetStateAction<Policy[]>>;
 }
 
-function HomePage({ darkMode }: Props) {
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+function HomePage({ policies, setPolicies }: Props) {
+  const { isDark } = useTheme();
+  const [searchTerm] = useState("");
   const [filter, setFilter] =
     useState<"all" | "active" | "expiring" | "expired">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showSplash, setShowSplash] = useState(true);
-  const [showExpiringAlert, setShowExpiringAlert] = useState(true);
 
-  const filterSectionRef = useRef<HTMLDivElement | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(3);
+
   const navigate = useNavigate();
 
   const filterKeys = ["all", "active", "expiring", "expired"] as const;
   type FilterKey = (typeof filterKeys)[number];
 
-  
-  // Auto-hide Expiring Alert after 10 sec
-
-
-useEffect(() => {
-    const preloadImage = (src: string) => {
-      const img = new Image();
-      img.src = src;
-    };
-    preloadImage("/logo1.png");
-    preloadImage("/logo2.png");
-  }, []);
-
   useEffect(() => {
     const fetchPolicies = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from("policy").select("*");
-      if (error) setError(error.message);
-      else if (data) setPolicies(data as Policy[]);
-      setLoading(false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from("policy")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+        setPolicies(data || []);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
     };
-
     fetchPolicies();
+  }, [setPolicies]);
 
-    const timer = setTimeout(() => setShowSplash(false), 2000);
-    return () => clearTimeout(timer);
+  // 🔥 AUTO SLIDE
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % quickNav.length);
+    }, 4000);
+
+    return () => clearInterval(timer);
   }, []);
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % quickNav.length);
+  };
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + quickNav.length) % quickNav.length);
+  };
 
   const getDaysDiff = (date: string) =>
     (new Date(date).getTime() - Date.now()) / (1000 * 3600 * 24);
@@ -87,16 +87,6 @@ useEffect(() => {
     expired: policies.filter((p) => getDaysDiff(p.renewal_date) < 0).length,
   };
 
-  useEffect(() => {
-  if (expiringPolicies.length > 0) {
-    const timer = setTimeout(() => {
-      setShowExpiringAlert(false);
-    }, 5000); // 10 sec
-
-    return () => clearTimeout(timer);
-  }
-}, [expiringPolicies]);
-
   const filteredPolicies = policies
     .filter((p) =>
       p.client_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -109,236 +99,149 @@ useEffect(() => {
       return true;
     });
 
-  const scrollToFilter = () => {
-    if (filterSectionRef.current) {
-      filterSectionRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const handleExpiringAlertClick = () => {
-    setFilter("expiring");
-    scrollToFilter();
-  };
-
-  if (showSplash)
-    return (
-      <motion.div
-        className={`d-flex flex-column justify-content-center align-items-center vh-100 ${
-          darkMode ? "bg-dark text-light" : "bg-light text-dark"
-        }`}
-      >
-        {/* Splash animation */}
-        <motion.img
-          key="logo"
-          src={darkMode ? "/logo1.png" : "/logo2.png"}
-          alt="PoliPulse Logo"
-          style={{
-            width: 150,
-            height: 150,
-            borderRadius: "20%",
-            marginBottom: "1.5rem",
-          }}
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{
-            scale: [0.6, 1.1, 1],
-            opacity: [0, 1, 1],
-            rotate: [0, 15, -15, 0],
-          }}
-          transition={{ duration: 1.8 }}
-        />
-      </motion.div>
-    );
-
-  if (loading)
-    return <div className="container mt-4">Loading policies...</div>;
-  if (error)
-    return <div className="container mt-4 text-danger">{error}</div>;
-
-  const darkColors: Record<FilterKey, string> = {
-    all: "bg-secondary text-light",
-    active: "bg-success text-light",
-    expiring: "bg-warning text-dark",
-    expired: "bg-danger text-light",
-  };
-
-  const lightColors: Record<FilterKey, string> = {
-    all: "bg-info text-white",
-    active: "bg-success text-white",
-    expiring: "bg-warning text-dark",
-    expired: "bg-danger text-white",
-  };
-
-  const icons: Record<FilterKey, React.ReactNode>
- = {
-    all: <FaClipboardList />,
-    active: <FaCheckCircle />,
-    expiring: <FaExclamationTriangle />,
-    expired: <FaTimesCircle />,
-  };
-
-  const quickNav = [
-    { title: "Client", icon: <FaUser />, path: "/holder/:id", color: "#4f46e5" },
-    { title: "Company", icon: <FaClipboardList />, path: "/company/_", color: "#f59e0b" },
-    { title: "Policy", icon: <FaEdit />, path: "/add", color: "#10b981" },
-    { title: "Analytics", icon: <FaChartBar />, path: "/reports", color: "#6366f1" },
-    { title: "Settings", icon: <FaCog />, path: "/settings", color: "#f97316" },
-    { title: "Profile", icon: <FaUser />, path: "/profile", color: "#3b82f6" },
-    { title: "Logout", icon: <FaSignOutAlt />, path: "/logout", color: "#ef4444" },
-  ];
-
-  const handleNavClick = (path: string) => {
+  const handleNavClick = async (path: string) => {
     if (path === "/logout") {
-      supabase.auth.signOut();
-      navigate("/auth");
+      await supabase.auth.signOut();
+      navigate("/");
     } else {
       navigate(path);
     }
   };
 
+  const quickNav = [
+    { title: "Client", icon: <FaUser />, path: "/holder/:id", color: "#6366f1" },
+    { title: "Company", icon: <FaClipboardList />, path: "/company/_", color: "#f59e0b" },
+    { title: "Policy", icon: <FaEdit />, path: "/add", color: "#10b981" },
+    { title: "Analytics", icon: <FaChartBar />, path: "/reports", color: "#8b5cf6" },
+    { title: "Settings", icon: <FaCog />, path: "/settings", color: "#f97316" },
+    { title: "Profile", icon: <FaUser />, path: "/profile", color: "#3b82f6" },
+    { title: "Logout", icon: <FaSignOutAlt />, path: "/logout", color: "#ef4444" },
+  ];
+
+  if (loading)
+    return <div className="text-center mt-10">Loading...</div>;
+
+  if (error)
+    return <div className="text-center text-red-500 mt-10">{error}</div>;
+
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={filter}
-        className={`container home-page ${darkMode ? "dark-mode" : ""}`}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        {/* 🔥 EXPIRING ALERT BANNER */}
-       <AnimatePresence>
-  {expiringPolicies.length > 0 && showExpiringAlert && (
-    <motion.div
-      key="expiring-alert"
-      className="shadow-lg position-relative mb-4"
-      style={{
-        cursor: "pointer",
-        borderRadius: 14,
-        backgroundColor: "#ff8c42", // 🔥 Modern Orange
-        color: "white",
-        padding: "18px 20px",
-      }}
-      onClick={handleExpiringAlertClick}
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -25 }}  // ➜ Smooth fade+slide
-      transition={{ duration: 0.45 }} // ➜ Smooth timing
-    >
-      {/* BIG CROSS ICON */}
-      <FaTimes
-        style={{
-          position: "absolute",
-          top: 12,
-          right: 14,
-          fontSize: "28px",
-          cursor: "pointer",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowExpiringAlert(false);
-        }}
-      />
+    <div className="px-4 md:px-10">
 
-      <h5 className="m-0 fw-bold" style={{ fontSize: "18px" }}>
-        ⚠️ {expiringPolicies.length} Policies Expiring Soon — Click to View
-      </h5>
-    </motion.div>
-  )}
-</AnimatePresence>
+      {/* 🔥 HERO */}
+      <div className="flex flex-col md:flex-row items-center justify-between w-full min-h-[400px] mt-6 mb-14 px-4 md:px-10 gap-10">
 
+        {/* 🔥 HERO LEFT */}
+        <div className="flex-1 flex flex-col justify-center items-center text-left px-6">
+          <div className="max-w-md text-center md:text-left">
+            <img
+              src={isDark ? "/logo1.png" : "/logo2.png"}
+              className="w-24 h-24 mb-4 rounded-xl mx-auto md:mx-0"
+            />
+            <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[10vw] font-extrabold leading-tight text-white dark:text-black">
+              PoliPulse
+            </h1>
 
+            <p className="mt-3 text-lg font-semibold text-blue-900 dark:text-blue-500">
+              Manage everything in one place
+            </p>
 
-        {/* === HERO SECTION === */}
-        <div
-          style={{
-            position: "relative",
-            zIndex: 3,
-            textAlign: "center",
-            padding: "2rem",
-          }}
-        >
-          <img
-            src={darkMode ? "/logo1.png" : "/logo2.png"}
-            alt="PoliPulse Logo"
-            style={{ width: 120, height: 120, marginBottom: "1rem" }}
-          />
-          <h1 className="fw-bold display-4">
-            PoliPulse
-          </h1>
-          <p className="lead mt-2">
-            Secure. Reliable. Smart.
-          </p>
+          </div>
         </div>
 
-        {/* QUICK NAV */}
-        <div className="row mb-5 justify-content-center">
-          {quickNav.map((nav) => (
-            <motion.div
-              className="col-md-3 col-6 mb-4 d-flex justify-content-center"
-              key={nav.title}
-              whileHover={{ scale: 1.05 }}
-            >
-              <div
-                className="card text-center quick-nav-card"
-                style={{ backgroundColor: nav.color, color: "white" }}
-                onClick={() => handleNavClick(nav.path)}
-              >
-                <div className="icon">{nav.icon}</div>
-                <h5 className="card-title">{nav.title}</h5>
-              </div>
-            </motion.div>
-          ))}
-        </div>
 
-        {/* SEARCH */}
-        <div className="mb-4 d-flex justify-content-center">
-          <input
-            type="text"
-            className={`form-control search-bar ${
-              darkMode
-                ? "bg-dark text-white border-secondary"
-                : "bg-light text-dark border-dark"
-            }`}
-            placeholder="🔍 Search by Client Name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        {/* 🔥 QUICKNAV RIGHT */}
+        <div className="flex-1 relative w-full h-[360px] flex items-center justify-center overflow-hidden">
+          <div className="relative w-full h-full flex items-center justify-center [perspective:1000px]">
+            {quickNav.map((nav, index) => {
+              const offset = index - currentIndex;
+              const total = quickNav.length;
 
-        {/* === FILTER SECTION === */}
-        <div className="row mb-4" ref={filterSectionRef}>
-          {filterKeys.map((key, index) => (
-            <motion.div
-              className="col-md-3 mb-3"
-              key={key}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <div
-                className={`card text-center status-card ${
-                  filter === key ? "selected-card" : ""
-                } ${darkMode ? darkColors[key] : lightColors[key]}`}
-                onClick={() => setFilter(key)}
-              >
-                <div className="card-body d-flex flex-column align-items-center">
-                  <div className="mb-2 icon">{icons[key]}</div>
-                  <h5 className="card-title">
-                    {key.charAt(0).toUpperCase() + key.slice(1)}
-                  </h5>
-                  <p className="card-text display-6">{counts[key]}</p>
+              let pos = (offset + total) % total;
+              if (pos > Math.floor(total / 2)) pos = pos - total;
+
+              const isCenter = pos === 0;
+              const isFront = Math.abs(pos) === 1;
+              const isBack = Math.abs(pos) === 2;
+
+              return (
+                <div
+                  key={nav.title}
+                  onClick={() => handleNavClick(nav.path)}
+                  className="absolute transition-all duration-500 ease-in-out cursor-pointer flex items-center justify-center"
+                  style={{
+                    transform: `translateX(${pos * 55}%) scale(${isCenter ? 1 : isFront ? 0.95 : isBack ? 0.75 : 0.6}) rotateY(${pos * -10}deg)`,
+                    zIndex: isCenter ? 30 : isFront ? 25 : isBack ? 10 : 0,
+                    opacity: isCenter ? 1 : isFront ? 1 : isBack ? 0.35 : 0,
+                    filter: isBack ? "blur(6px)" : "blur(0px)",
+                    visibility: Math.abs(pos) > 2 ? "hidden" : "visible",
+                  }}
+                >
+                  <div
+                    className="w-44 h-48 rounded-2xl flex flex-col items-center justify-center text-white shadow-2xl"
+                    style={{
+                      background: nav.color,
+                      boxShadow: isCenter ? "0 25px 50px rgba(0,0,0,0.35)" : "0 15px 30px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    <div className="text-3xl mb-2">{nav.icon}</div>
+                    <span className="font-semibold">{nav.title}</span>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* POLICY TABLE */}
-        <PolicyTable
-          policies={filteredPolicies}
-          setPolicies={setPolicies}
-          darkMode={darkMode}
-        />
-      </motion.div>
-    </AnimatePresence>
+          {/* NAV BUTTONS */}
+          <button
+            onClick={handlePrev}
+            className="absolute left-2 md:left-10 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-md p-3 rounded-full text-white"
+          >
+            ←
+          </button>
+
+          <button
+            onClick={handleNext}
+            className="absolute right-2 md:right-10 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-md p-3 rounded-full text-white"
+          >
+            →
+          </button>
+        </div>
+      </div>
+
+      {/* 🔍 SEARCH */}
+
+      {/* 🔥 FILTER CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 mt-4">
+        {filterKeys.map((key) => (
+          <div
+            key={key}
+            onClick={() => setFilter(key)}
+            className={`
+        cursor-pointer p-6 rounded-2xl flex flex-col items-center justify-center
+        text-center font-bold transition-all duration-300
+        ${filter === key
+                ? "border-4 border-indigo-600 bg-indigo-600/20"
+                : "border-2 border-gray-400 dark:border-zinc-700 bg-gray-200/20 dark:bg-zinc-900/40"}
+        hover:scale-105 shadow-sm
+      `}
+          >
+            <div className="text-3xl md:text-4xl mb-2 text-indigo-700 dark:text-indigo-400">
+              {counts[key]}
+            </div>
+            <div className="text-lg md:text-xl capitalize text-gray-800 dark:text-white">
+              {key}
+            </div>
+          </div>
+        ))}
+      </div>
+
+
+      {/* 📄 TABLE */}
+      <PolicyTable
+        policies={filteredPolicies}
+        setPolicies={setPolicies}
+      />
+    </div>
   );
 }
 

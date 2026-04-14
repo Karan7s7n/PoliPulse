@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../models/supabaseClient";
 import type { Policy } from "../models/supabaseTypes";
 import { Bar, Pie, Line, Radar } from "react-chartjs-2";
 import {
@@ -22,12 +22,16 @@ import {
   FaThLarge,
   FaFilePdf,
   FaRupeeSign,
-  FaTrophy
+  FaTrophy,
+  FaChartBar,
+  FaSearch,
+  FaCalendarAlt
 } from "react-icons/fa";
 import CountUp from "react-countup";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { motion } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
 
 ChartJS.register(
   CategoryScale,
@@ -42,19 +46,13 @@ ChartJS.register(
   Legend
 );
 
-const supabase = createClient(
-  "https://shmvmxxhxvrnhlwdjcmp.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNobXZteHhoeHZybmhsd2RqY21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDAyMzMsImV4cCI6MjA3NTQ3NjIzM30.HpC27sRY0sxlz6QzqdKCzJJpDRnHEFT2uGcPl-gXo48"
-);
-
 interface ReportsProps {
-  darkMode: boolean;
   policies: Policy[];
-  initialPolicies?: Policy[];
+  setPolicies: React.Dispatch<React.SetStateAction<Policy[]>>;
 }
 
-function Reports({ darkMode }: ReportsProps) {
-  const [policies, setPolicies] = useState<Policy[]>([]);
+function Reports({ policies, setPolicies }: ReportsProps) {
+  const { isDark } = useTheme();
   const [filteredPolicies, setFilteredPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,19 +72,31 @@ function Reports({ darkMode }: ReportsProps) {
 
   async function fetchReports() {
     setLoading(true);
-    const { data, error } = await supabase.from("policy").select("*");
-    if (error) {
-      console.error(error);
-      setError("Failed to fetch report data.");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("policy")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error(error);
+        setError("Failed to fetch report data.");
+        setLoading(false);
+        return;
+      }
+      if (data) {
+        setPolicies(data);
+        setFilteredPolicies(data);
+        updateStats(data);
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
       setLoading(false);
-      return;
     }
-    if (data) {
-      setPolicies(data);
-      setFilteredPolicies(data);
-      updateStats(data);
-    }
-    setLoading(false);
   }
 
   function updateStats(data: Policy[]) {
@@ -153,21 +163,25 @@ function Reports({ darkMode }: ReportsProps) {
     return companyPolicies.length ? total / companyPolicies.length : 0;
   });
 
-  const chartTextColor = darkMode ? "#f5f5f5" : "#1a1a1a";
-  const gridColor = darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+  const chartTextColor = isDark ? "#ffffff" : "#0f172a";
+  const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: chartTextColor } },
+      legend: { 
+        position: 'bottom' as const,
+        labels: { color: chartTextColor, font: { weight: 'bold' as const, size: 10 } } 
+      },
     },
     scales: {
       x: {
-        ticks: { color: chartTextColor },
-        grid: { color: gridColor },
+        ticks: { color: chartTextColor, font: { weight: 'bold' as const, size: 10 } },
+        grid: { color: 'transparent' },
       },
       y: {
-        ticks: { color: chartTextColor },
+        ticks: { color: chartTextColor, font: { weight: 'bold' as const, size: 10 } },
         grid: { color: gridColor },
       },
     },
@@ -176,309 +190,198 @@ function Reports({ darkMode }: ReportsProps) {
   const charts = [
     { title: "Monthly Renewal Trend", chart: <Line data={{
         labels: months,
-        datasets: [{ label: "Policies Renewing", data: monthCounts, borderColor: "#007bff", backgroundColor: "rgba(0,123,255,0.3)", fill: true }]
+        datasets: [{ label: "Policies Renewing", data: monthCounts, borderColor: "#6366f1", backgroundColor: "rgba(99,102,241,0.1)", fill: true, tension: 0.4 }]
       }} options={chartOptions} /> },
-    { title: "Premium by Company", chart: <Bar data={{
+    { title: "Premium vs Company", chart: <Bar data={{
         labels: companies,
-        datasets: [{ label: "Total Premium", data: companyPremiums, backgroundColor: "rgba(75,192,192,0.6)" }]
+        datasets: [{ label: "Total Premium", data: companyPremiums, backgroundColor: "#10b981", borderRadius: 8 }]
       }} options={chartOptions} /> },
-    { title: "Active vs Expired by Company", chart: <Bar data={{
+    { title: "Active vs Expired Mix", chart: <Bar data={{
         labels: companies,
         datasets: [
-          { label: "Active", data: companies.map(c => filteredPolicies.filter(p => p.company_name === c && getDaysDiff(p.renewal_date) > 30).length), backgroundColor: "#28a745" },
-          { label: "Expired", data: companies.map(c => filteredPolicies.filter(p => p.company_name === c && getDaysDiff(p.renewal_date) < 0).length), backgroundColor: "#dc3545" },
+          { label: "Active", data: companies.map(c => filteredPolicies.filter(p => p.company_name === c && getDaysDiff(p.renewal_date) > 30).length), backgroundColor: "#3b82f6", borderRadius: 4 },
+          { label: "Expired", data: companies.map(c => filteredPolicies.filter(p => p.company_name === c && getDaysDiff(p.renewal_date) < 0).length), backgroundColor: "#ef4444", borderRadius: 4 },
         ]
       }} options={{ ...chartOptions, scales: { x: { stacked: true }, y: { stacked: true } } }} /> },
-    { title: "Premium Trend Over Time", chart: <Line data={{
+    { title: "Portfolio Value Growth", chart: <Line data={{
         labels: months,
-        datasets: [{ label: "Total Premium", data: monthlyPremiums, borderColor: "#ff6384", backgroundColor: "rgba(255,99,132,0.3)", fill: true, tension: 0.3 }]
+        datasets: [{ label: "Premium Volume", data: monthlyPremiums, borderColor: "#f59e0b", backgroundColor: "rgba(245,158,11,0.1)", fill: true, tension: 0.4 }]
       }} options={chartOptions} /> },
-    { title: "Average Premium per Policy", chart: <Radar data={{
+    { title: "Company Efficiency", chart: <Radar data={{
         labels: companies,
-        datasets: [{ label: "Average Premium", data: avgPremiums, backgroundColor: "rgba(153,102,255,0.3)", borderColor: "rgba(153,102,255,0.8)" }]
-      }} options={chartOptions} /> },
-    { title: "Policy Status Distribution", chart: <Pie data={{
-        labels: ["Active", "Expiring Soon", "Expired"],
-        datasets: [{ data: [stats.active, stats.expiring, stats.expired], backgroundColor: ["#28a745", "#ffc107", "#dc3545"] }]
-      }} options={chartOptions} /> },
-    
+        datasets: [{ label: "Avg Premium", data: avgPremiums, backgroundColor: "rgba(139,92,246,0.2)", borderColor: "#8b5cf6", pointBackgroundColor: "#8b5cf6" }]
+      }} options={{ ...chartOptions, scales: { r: { grid: { color: gridColor }, ticks: { display: false } } } }} /> },
+    { title: "Status Segmentation", chart: <Pie data={{
+        labels: ["Active", "Expiring", "Expired"],
+        datasets: [{ data: [stats.active, stats.expiring, stats.expired], backgroundColor: ["#10b981", "#f59e0b", "#ef4444"], borderWidth: 0 }]
+      }} options={{ ...chartOptions, scales: undefined }} /> },
   ];
 
-
   const exportPDF = async () => {
-  const element = dashboardRef.current;
-  if (!element) return;
+    const element = dashboardRef.current;
+    if (!element) return;
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    pdf.setFontSize(18);
+    pdf.text("PoliPulse Analytics Report", pageWidth / 2, 20, { align: "center" });
+    pdf.addImage(imgData, "PNG", 10, 35, imgWidth, imgHeight);
+    pdf.setFontSize(10);
+    pdf.text(`Generated: ${new Date().toLocaleString()}`, 10, pageHeight - 10);
+    pdf.save(`PoliPulse_Report_${Date.now()}.pdf`);
+  };
 
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-  });
-
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDF("p", "mm", "a4");
-
-  // Load logo (must be inside /public/)
-  const logo = new Image();
-  logo.src = "/logo2.png"; // ✅ place your logo in public/logo-pp1.png
-  await new Promise((resolve) => (logo.onload = resolve));
-
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const imgWidth = pageWidth - 20;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  // Add logo and title
-  pdf.addImage(logo, "PNG", 10, 8, 20, 20);
-  pdf.setFontSize(16);
-  pdf.text("PolicyPulse - Analytics Dashboard", pageWidth / 2, 20, { align: "center" });
-
-  // Add captured dashboard image
-  pdf.addImage(imgData, "PNG", 10, 35, imgWidth, imgHeight);
-
-  // Add footer (page + timestamp)
-  pdf.setFontSize(10);
-  pdf.text(
-    `Generated on: ${new Date().toLocaleString()}`,
-    10,
-    pageHeight - 10
+  if (loading) return (
+    <div className={`flex flex-col items-center justify-center min-h-[400px] ${isDark ? "text-white" : "text-slate-900"}`}>
+      <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="mt-6 font-black uppercase tracking-widest text-[10px] opacity-40 text-indigo-500">Processing Analytics</p>
+    </div>
   );
 
-  pdf.save(`PolicyPulse_Report_${new Date().toISOString().split("T")[0]}.pdf`);
-};
-
-
-  if (loading) return <div className="container mt-4">Loading report...</div>;
-  if (error) return <div className="container mt-4 text-danger">{error}</div>;
+  if (error) return <div className="text-center py-20 text-rose-500 font-black">{error}</div>;
 
   return (
     <motion.div
       ref={dashboardRef}
-      className={`container mt-4 mb-5 ${darkMode ? "text-light" : ""}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+      className={`container mx-auto px-6 py-12 ${isDark ? "text-white" : "text-slate-900"}`}
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
     >
-      <h2
-  className="mb-4 fw-bold text-center"
-  style={{ color: darkMode ? "white" : "black" }}
->
-  Analytics Dashboard
-</h2>
-
+      <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+        <div className="text-center md:text-left">
+            <h1 className="font-black text-5xl tracking-tighter mb-2">Reports & Intelligence</h1>
+            <p className="font-black uppercase tracking-[0.2em] text-[10px] opacity-40 text-indigo-500">Portfolio Performance Analytics Dashboard</p>
+        </div>
+        <button 
+          onClick={exportPDF}
+          className="flex items-center gap-3 px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-[2rem] font-black uppercase tracking-widest text-[10px] shadow-2xl shadow-rose-600/20 transition-all hover:scale-105 active:scale-95"
+        >
+          <FaFilePdf /> Export Portfolio PDF
+        </button>
+      </div>
 
       {/* Filters */}
-      <div className="row g-3 mt-3">
-        <div className="col-md-3">
-          <input
-            type="text"
-            placeholder="Search by Company or Policy No"
-            className="form-control"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-12 p-6 rounded-[2.5rem] border ${isDark ? 'bg-zinc-900/50 border-white/5' : 'bg-slate-100 border-black/5'}`}>
+        <div className="relative group">
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" />
+            <input
+                type="text"
+                placeholder="Search..."
+                className={`w-full pl-10 pr-4 py-3 rounded-2xl border outline-none font-bold text-xs transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-white focus:border-indigo-500" : "bg-white border-slate-200 focus:border-indigo-600"}`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+            />
         </div>
-        <div className="col-md-2">
-          <select
-            className="form-select"
+        <select
+            className={`w-full px-4 py-3 rounded-2xl border outline-none font-bold text-xs transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-white focus:border-indigo-500" : "bg-white border-slate-200 focus:border-indigo-600"}`}
             value={filterCompany}
             onChange={(e) => setFilterCompany(e.target.value)}
-          >
+        >
             <option value="">All Companies</option>
-            {companies.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-        <div className="col-md-2">
-          <select
-            className="form-select"
+            {companies.map((c) => <option key={c}>{c}</option>)}
+        </select>
+        <select
+            className={`w-full px-4 py-3 rounded-2xl border outline-none font-bold text-xs transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-white focus:border-indigo-500" : "bg-white border-slate-200 focus:border-indigo-600"}`}
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">All Status</option>
+        >
+            <option value="">All Statuses</option>
             <option value="active">Active</option>
             <option value="expiring">Expiring</option>
             <option value="expired">Expired</option>
-          </select>
+        </select>
+        <div className="relative group">
+            <FaCalendarAlt className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none" />
+            <input
+                type="date"
+                className={`w-full px-4 py-3 rounded-2xl border outline-none font-bold text-xs transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-white focus:border-indigo-500" : "bg-white border-slate-200 focus:border-indigo-600"}`}
+                value={dateRange.from}
+                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+            />
         </div>
-        <div className="col-md-2">
-          <input
-            type="date"
-            className="form-control"
-            value={dateRange.from}
-            onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <input
-            type="date"
-            className="form-control"
-            value={dateRange.to}
-            onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-          />
+        <div className="relative group">
+            <FaCalendarAlt className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none" />
+            <input
+                type="date"
+                className={`w-full px-4 py-3 rounded-2xl border outline-none font-bold text-xs transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-white focus:border-indigo-500" : "bg-white border-slate-200 focus:border-indigo-600"}`}
+                value={dateRange.to}
+                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+            />
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="row g-3 mt-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
         {[
-          { label: "Total Policies", value: stats.total, bg: "info", icon: <FaThLarge />, status: "" },
-          { label: "Active", value: stats.active, bg: "success", icon: <FaCheckCircle />, status: "active" },
-          { label: "Expiring Soon", value: stats.expiring, bg: "warning", icon: <FaExclamationTriangle />, status: "expiring" },
-          { label: "Expired", value: stats.expired, bg: "danger", icon: <FaTimesCircle />, status: "expired" },
+          { label: "Total Unit", value: stats.total, color: "bg-indigo-600 shadow-indigo-600/20", icon: <FaThLarge />, status: "" },
+          { label: "Operational", value: stats.active, color: "bg-emerald-600 shadow-emerald-600/20", icon: <FaCheckCircle />, status: "active" },
+          { label: "Warning", value: stats.expiring, color: "bg-amber-500 shadow-amber-500/20", icon: <FaExclamationTriangle />, status: "expiring" },
+          { label: "Decommissioned", value: stats.expired, color: "bg-rose-600 shadow-rose-600/20", icon: <FaTimesCircle />, status: "expired" },
         ].map((card) => (
-          <div key={card.label} className="col-md-3 col-6">
-            <div
-              onClick={() => setFilterStatus(card.status)}
-              className={`card shadow text-center bg-${card.bg} ${darkMode ? "text-light" : "text-white"}`}
-              style={{
-                transition: "transform 0.2s, box-shadow 0.2s",
-                cursor: "pointer",
-              }}
-            >
-              <div className="card-body">
-                <div className="fs-2 mb-2">{card.icon}</div>
-                <h5 className="card-title">{card.label}</h5>
-                <p className="card-text display-6">
-                  <CountUp end={card.value} duration={1.2} />
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-     {/* Key Insights */}
-<div className="row g-3 mt-4">
-  {(() => {
-    const totalPremium = filteredPolicies.reduce((sum, p) => sum + Number(p.premium || 0), 0);
-
-    const companies = Array.from(new Set(filteredPolicies.map(p => p.company_name)));
-    const companyPremiums = companies.map(c =>
-      filteredPolicies
-        .filter(p => p.company_name === c)
-        .reduce((sum, p) => sum + Number(p.premium || 0), 0)
-    );
-    const topCompany =
-      companies.length > 0
-        ? companies[companyPremiums.indexOf(Math.max(...companyPremiums))]
-        : "N/A";
-
-    const policyTypes = Array.from(new Set(filteredPolicies.map(p => p.policy_type)));
-    const topPolicyType =
-      policyTypes.length > 0
-        ? policyTypes.sort((a, b) =>
-            filteredPolicies.filter(p => p.policy_type === b).length -
-            filteredPolicies.filter(p => p.policy_type === a).length
-          )[0]
-        : "N/A";
-
-    const today = new Date();
-    const newPoliciesThisMonth = filteredPolicies.filter(p => {
-      const pd = new Date(p.purchase_date);
-      return pd.getMonth() === today.getMonth() && pd.getFullYear() === today.getFullYear();
-    }).length;
-
-    const averagePremium =
-      filteredPolicies.length > 0
-        ? Math.round(totalPremium / filteredPolicies.length)
-        : 0;
-
-    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastMonthPremium = filteredPolicies
-      .filter(p => {
-        const pd = new Date(p.purchase_date);
-        return pd.getMonth() === lastMonth.getMonth() && pd.getFullYear() === lastMonth.getFullYear();
-      })
-      .reduce((sum, p) => sum + Number(p.premium || 0), 0);
-    const premiumGrowthRate =
-      lastMonthPremium > 0
-        ? Math.round(((totalPremium - lastMonthPremium) / lastMonthPremium))
-        : 0;
-
-    const totalActivePremium = filteredPolicies
-      .filter(p => {
-        const rd = new Date(p.renewal_date);
-        const diffDays = (rd.getTime() - today.getTime()) / (1000 * 3600 * 24);
-        return diffDays > 30;
-      })
-      .reduce((sum, p) => sum + Number(p.premium || 0), 0);
-
-    const insights = [
-      { title: "Total Premium Collected", value: `₹${totalPremium.toLocaleString()}`, icon: <FaRupeeSign className="me-2 text-success" /> },
-      { title: "Top Company", value: topCompany, icon: <FaTrophy className="me-2 text-warning" /> },
-      { title: "Top Policy Type", value: topPolicyType, icon: <FaThLarge className="me-2 text-info" /> },
-      { title: "New Policies", value: newPoliciesThisMonth, icon: <FaFilePdf className="me-2 text-primary" /> },
-      { title: "Average Premium", value: `₹${averagePremium.toLocaleString()}`, icon: <FaRupeeSign className="me-2 text-secondary" /> },
-      { title: "Premium Growth Rate", value: `${premiumGrowthRate}%`, icon: <FaTrophy className="me-2 text-warning" /> },
-      { title: "Total Active Premium", value: `₹${totalActivePremium.toLocaleString()}`, icon: <FaRupeeSign className="me-2 text-danger" /> },
-      { title: "Policies Renewed", value: filteredPolicies.filter(p => {
-          const rd = new Date(p.renewal_date);
-          return rd.getMonth() === today.getMonth() && rd.getFullYear() === today.getFullYear();
-        }).length, icon: <FaCheckCircle className="me-2 text-success" /> },
-    ];
-
-    return insights.map((insight, i) => (
-      <div key={i} className="col-md-6 col-lg-3">
-        <div
-          className={`card shadow-lg border-0 d-flex flex-row align-items-center gap-3 p-4`}
-          style={{
-            borderRadius: "16px",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            backgroundColor: darkMode
-              ? "rgba(255, 255, 255, 0.05)" // dark mode: light semi-transparent
-              : "rgba(255, 255, 255, 0.35)", // light mode: more visible glass
-            color: darkMode ? "white" : "black",
-          }}
-        >
-          <div className="fs-2">{insight.icon}</div>
-          <div>
-            <h6 className="text-uppercase fw-semibold mb-1">{insight.title}</h6>
-            <h5 className="fw-bold">{insight.value}</h5>
-          </div>
-        </div>
-      </div>
-    ));
-  })()}
-</div>
-
-
-      {/* Charts */}
-      <div className="row mt-4 g-3">
-        {charts.map((c, i) => (
           <motion.div
-            key={i}
-            className="col-md-6 col-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.15 }}
+            key={card.label}
+            whileHover={{ y: -10 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setFilterStatus(card.status)}
+            className={`rounded-[2.5rem] text-center p-8 cursor-pointer transition-all ${card.color} text-white shadow-2xl relative overflow-hidden group`}
           >
-            <div
-              className={`card h-100 shadow-lg border-0 ${
-                darkMode ? "bg-dark text-light" : "bg-white text-dark"
-              }`}
-              style={{
-                borderRadius: "16px",
-                padding: "1.2rem",
-                minHeight: "420px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <h5 className="mb-3 fw-semibold">{c.title}</h5>
-              <div style={{ flex: 1 }}>{c.chart}</div>
+            <div className="relative z-10 flex flex-col items-center">
+                <div className="text-3xl mb-4 bg-white/20 p-4 rounded-2xl group-hover:rotate-12 transition-transform">{card.icon}</div>
+                <h5 className="font-black text-[10px] uppercase tracking-[0.2em] opacity-80">{card.label}</h5>
+                <p className="text-5xl font-black mt-2 tracking-tighter"><CountUp end={card.value} duration={1.5} /></p>
             </div>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform"></div>
           </motion.div>
         ))}
       </div>
 
-      {/* Export PDF */}
-      <div className="mt-4 d-flex gap-2">
-        <button className="btn btn-danger d-flex align-items-center" onClick={exportPDF}>
-          <FaFilePdf className="me-2" /> Export PDF
-        </button>
+      {/* Insights */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        {(() => {
+          const totalPremium = filteredPolicies.reduce((sum, p) => sum + Number(p.premium || 0), 0);
+          const topCompany = companies.length > 0 ? companies[companyPremiums.indexOf(Math.max(...companyPremiums))] : "N/A";
+          const policyTypes = Array.from(new Set(filteredPolicies.map(p => p.policy_type)));
+          const topPolicyType = policyTypes.length > 0 ? policyTypes.sort((a, b) => filteredPolicies.filter(p => p.policy_type === b).length - filteredPolicies.filter(p => p.policy_type === a).length)[0] : "N/A";
+          const today = new Date();
+          const newPoliciesThisMonth = filteredPolicies.filter(p => { const pd = new Date(p.purchase_date); return pd.getMonth() === today.getMonth() && pd.getFullYear() === today.getFullYear(); }).length;
+          
+          return [
+            { title: "Net Premium", value: `₹${totalPremium.toLocaleString()}`, icon: <FaRupeeSign className="text-emerald-500" /> },
+            { title: "Lead Provider", value: topCompany, icon: <FaTrophy className="text-amber-500" /> },
+            { title: "Dominant Class", value: topPolicyType, icon: <FaThLarge className="text-indigo-400" /> },
+            { title: "New Acquisitions", value: newPoliciesThisMonth, icon: <FaChartBar className="text-cyan-400" /> },
+          ].map((insight, i) => (
+            <div key={i} className={`p-8 rounded-[2rem] flex flex-row items-center gap-6 border ${isDark ? "bg-zinc-900 border-white/5" : "bg-white border-black/5"} shadow-xl`}>
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${isDark ? 'bg-zinc-950/50':'bg-slate-50'}`}>{insight.icon}</div>
+              <div>
+                <h6 className="uppercase font-black text-[9px] tracking-[0.2em] opacity-40 mb-1">{insight.title}</h6>
+                <h5 className="font-black text-lg m-0 truncate w-32" title={insight.value.toString()}>{insight.value}</h5>
+              </div>
+            </div>
+          ));
+        })()}
       </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {charts.map((c, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className={`p-10 rounded-[3rem] shadow-2xl border flex flex-col ${isDark ? "bg-zinc-900 border-white/5" : "bg-white border-black/5"}`}
+          >
+            <h5 className="mb-10 font-black uppercase tracking-[0.2em] text-xs opacity-40 text-center">{c.title}</h5>
+            <div className="h-[300px] w-full">{c.chart}</div>
+          </motion.div>
+        ))}
+      </div>
+
     </motion.div>
   );
 }

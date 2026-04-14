@@ -1,288 +1,184 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { FaBars, FaTimes, FaEdit } from "react-icons/fa";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../models/supabaseClient";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "./Navbar.css";
+import { useTheme } from "../context/ThemeContext";
+import logoDark from "../assets/logo-dark.png";
+import logoLight from "../assets/logo-light.png";
+import {
+  LayoutDashboard,
+  PlusCircle,
+  BarChart3,
+  ShieldCheck,
+  X,
+  Menu,
+  ChevronRight
+} from "lucide-react";
 
-interface NavbarProps {
-  darkMode: boolean;
-}
-
-function Navbar({ darkMode }: NavbarProps) {
+function Navbar() {
+  const { isDark } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // ✅ controlled here
 
+  // ✅ Detect admin from Supabase
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      const email = data?.user?.email;
+
+      // 🔥 CHANGE THIS EMAIL TO YOUR ADMIN EMAIL
+      if (email === "karansinghn.07@gmail.com") {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+
+    getUser();
+  }, []);
+
+  // ✅ Safe navLinks (no mutation)
   const navLinks = [
-    { path: "/", label: "Home", icon: "🏠" },
-    { path: "/reports", label: "Analytics", icon: "📊" },
-    { path: "/add", label: "Policy", icon: <FaEdit /> },
+    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/reports", label: "Analytics", icon: BarChart3 },
+    { path: "/add", label: "Add Policy", icon: PlusCircle },
+    ...(isAdmin
+      ? [{ path: "/admin", label: "Admin Console", icon: ShieldCheck }]
+      : [])
   ];
 
+  const logoSrc = isDark ? logoLight : logoDark;
 
-  const logoSrc = darkMode ? "/logo2.png" : "/logo1.png";
-
-  const sidebarClass = `profile-sidebar ${sidebarOpen ? "open" : ""}`;
-  const overlayClass = sidebarOpen
-    ? "sidebar-overlay active"
-    : "sidebar-overlay";
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    setSidebarOpen(false);
+  };
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
       setSidebarOpen(false);
-      navigate("/auth");
+      navigate("/", { replace: true });
     } catch {
       alert("Logout failed");
     }
   };
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+
+    document.addEventListener("keydown", handleEsc);
+    document.body.style.overflow = sidebarOpen ? "hidden" : "auto";
+
+    return () => {
+      document.removeEventListener("keydown", handleEsc);
+      document.body.style.overflow = "auto";
+    };
+  }, [sidebarOpen]);
+
   return (
     <>
-      {/* 🌐 NAVBAR — now with sidebar theme style */}
-      {/* 🌐 NAVBAR with inverse theme */}
-<nav
-  className="navbar shadow-sm"
-  style={{
-    padding: "12px 20px",
-    backdropFilter: "blur(18px)",
-    WebkitBackdropFilter: "blur(18px)",
-    borderBottom: darkMode
-      ? "1px solid rgba(0,0,0,0.12)"
-      : "1px solid rgba(255,255,255,0.3)",
-
-    // 🌙 Inverse Theme
-    background: darkMode
-      ? "rgba(255, 255, 255, 0.55)"   // Light navbar on dark mode
-      : "rgba(15, 15, 15, 0.55)",     // Dark navbar on light mode
-
-    // Subtle shadow for floating effect
-    boxShadow: darkMode
-      ? "0 4px 20px rgba(255,255,255,0.15)"
-      : "0 4px 20px rgba(0,0,0,0.25)",
-
-    color: darkMode ? "black" : "white",
-  }}
->
-  <div
-    className="container-fluid d-flex align-items-center"
-    style={{ position: "relative" }}
-  >
-    {/* Centered Logo + App Name */}
-    <div
-      className="position-absolute start-50 translate-middle-x d-flex align-items-center"
-      style={{ pointerEvents: "none" }}
-    >
-      <img
-        src={logoSrc}
-        alt="App logo"
-        style={{
-          height: "32px",
-          width: "32px",
-          borderRadius: "8px",
-          marginRight: "10px",
-          filter: darkMode ? "none" : "brightness(1.1)",
-        }}
-      />
-      <span
-        className="fw-bold fs-5"
-        style={{
-          color: darkMode ? "#111" : "#f5f5f5",
-          letterSpacing: "0.5px",
-        }}
-      >
-        PoliPulse
-      </span>
-    </div>
-
-    {/* Menu Icon (Right Aligned) */}
-    <button
-      className="btn"
-      onClick={() => setSidebarOpen(true)}
-      style={{
-        marginLeft: "auto",
-        color: darkMode ? "#111" : "#f5f5f5",
-        background: darkMode
-          ? "rgba(0,0,0,0.06)"
-          : "rgba(255,255,255,0.15)",
-        padding: "8px 12px",
-        borderRadius: "12px",
-        backdropFilter: "blur(8px)",
-      }}
-    >
-      <FaBars size={22} />
-    </button>
-  </div>
-</nav>
-
-
-      {/* Background Overlay */}
-      <div className={overlayClass} onClick={() => setSidebarOpen(false)} />
-
-      {/* 📱 RIGHT SIDEBAR */}
-      <div
-        className={sidebarClass}
-        style={{
-          width: "28vw", // widened from 25%
-          maxWidth: "360px",
-          background: darkMode
-            ? "rgba(20,20,20,0.6)"
-            : "rgba(255,255,255,0.6)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          boxShadow: darkMode
-            ? "8px 0 25px rgba(0,0,0,0.6)"
-            : "8px 0 25px rgba(0,0,0,0.15)",
-        }}
-      >
-        {/* Logo Block */}
-        <div
-          className="text-center p-4"
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-2000 w-[95%] max-w-5xl">
+        <nav
+          className="flex items-center justify-between px-6 py-3 rounded-full border shadow-lg backdrop-blur-md transition-all duration-300"
           style={{
-            borderBottom: darkMode
-              ? "1px solid rgba(255,255,255,0.08)"
-              : "1px solid rgba(0,0,0,0.08)",
+            background: isDark ? "rgba(25, 25, 25, 0.7)" : "rgba(255, 255, 255, 0.7)",
+            borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+            color: isDark ? "#fff" : "#111",
           }}
         >
           <div
-            className="mx-auto d-flex justify-content-center align-items-center"
-            style={{
-              width: "120px",
-              height: "120px",
-              borderRadius: "20px",
-              background: darkMode ? "#f8f9fa" : "#222",
-            }}
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => handleNavigate("/dashboard")}
           >
-            <img
-              src={logoSrc}
-              alt="App Logo"
-              style={{ width: "65px", height: "65px", borderRadius: "12px" }}
-            />
+            <img src={logoSrc} alt="logo" className="w-8 h-8 rounded-md" />
+            <span className="font-semibold text-lg">PoliPulse</span>
           </div>
 
-          <h4
-  className="mt-3 fw-bold"
-  style={{
-    color: darkMode ? "#f1f1f1" : "#111",   // Adjusted for theme
-    letterSpacing: "0.5px",
-  }}
->
-  PoliPulse
-</h4>
-
-<p
-  className="m-0"
-  style={{
-    color: darkMode ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)",
-  }}
->
-  Secure. Reliable. Smart.
-</p>
-
-        </div>
-
-        {/* Menu Items */}
-        <div className="px-4 mt-4">
-          <h6 className="opacity-75 mb-2" style={{
-    color: darkMode ? "#f1f1f1" : "#111",   // Adjusted for theme
-    letterSpacing: "0.5px",
-  }}>MENU</h6>
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className="text-decoration-none"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <div
-                className="menu-tile"
-                style={{
-                  padding: "14px 18px",
-                  marginBottom: "14px",
-                  borderRadius: "18px",
-                  background: darkMode
-                    ? "rgba(255,255,255,0.07)"
-                    : "rgba(255,255,255,0.85)",
-                  color: darkMode ? "white" : "black",
-                }}
-              >
-                {link.icon} <span className="ms-2">{link.label}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Profile + Logout */}
-        <div className="px-4 mt-4">
-          <h6 className="opacity-75 mb-2" style={{
-    color: darkMode ? "#f1f1f1" : "#111",   // Adjusted for theme
-    letterSpacing: "0.5px",
-  }}>PROFILE</h6>
-
-          <Link
-            to="/profile"
-            className="text-decoration-none"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <div
-              className="menu-tile"
-              style={{
-                padding: "14px 18px",
-                borderRadius: "18px",
-                marginBottom: "14px",
-                background: darkMode
-                  ? "rgba(255,255,255,0.07)"
-                  : "rgba(255,255,255,0.85)",
-                color: darkMode ? "white" : "black",
-              }}
-            >
-              👤 Profile
-            </div>
-          </Link>
-          <Link
-    to="/settings"
-    className="text-decoration-none"
-    onClick={() => setSidebarOpen(false)}
-  >
-    <div
-      className="menu-tile"
-      style={{
-        padding: "14px 18px",
-        borderRadius: "18px",
-        marginBottom: "14px",
-        background: darkMode
-          ? "rgba(255,255,255,0.07)"
-          : "rgba(255,255,255,0.85)",
-        color: darkMode ? "white" : "black",
-      }}
-    >
-      ⚙️ Settings
-    </div>
-  </Link>
-
           <button
-            onClick={handleLogout}
-            className="w-100"
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-full transition-colors"
             style={{
-              padding: "14px 18px",
-              borderRadius: "18px",
-              background: "rgba(255,60,60,0.25)",
-              color: darkMode ? "#ff6b6b" : "#c0392b",
-              border: "none",
-              fontWeight: 600,
+              background: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
             }}
           >
-            🚪 Logout
+            <Menu size={20} />
           </button>
+        </nav>
+      </div>
+
+      <div
+        onClick={() => setSidebarOpen(false)}
+        className={`fixed inset-0 z-1500 transition-opacity duration-300 ${
+          sidebarOpen ? "bg-black/60 backdrop-blur-sm opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
+      <div
+        className={`fixed top-0 right-0 h-full z-2001 transition-transform duration-300 shadow-2xl ${
+          sidebarOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+        style={{
+          width: "300px",
+          background: isDark ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
+          backdropFilter: "blur(20px)",
+          color: isDark ? "#fff" : "#111",
+        }}
+      >
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className={`absolute top-6 right-6 p-2 rounded-xl transition-all ${
+            isDark
+              ? "hover:bg-white/10 text-white/40 hover:text-white"
+              : "hover:bg-black/5 text-black/40 hover:text-black"
+          }`}
+        >
+          <X size={20} />
+        </button>
+
+        <div className="flex items-center gap-3 p-8">
+          <img src={logoSrc} alt="PoliPulse Logo" className="w-10 h-10 rounded-xl shadow-xl rotate-3" />
+          <div>
+            <div className="font-black text-xl uppercase">PoliPulse</div>
+            <div className="text-[10px] uppercase opacity-40">User Panel</div>
+          </div>
         </div>
 
-        {/* Close Button */}
-        <button
-          className="close-sidebar-btn"
-          onClick={() => setSidebarOpen(false)}
-        >
-          <FaTimes size={22} />
-        </button>
+        <div className="px-6 space-y-1.5">
+          {navLinks.map((link) => {
+            const isActive = location.pathname === link.path;
+            const Icon = link.icon;
+
+            return (
+              <button
+                key={link.path}
+                onClick={() => handleNavigate(link.path)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl ${
+                  isActive
+                    ? "bg-indigo-600 text-white"
+                    : isDark
+                    ? "text-zinc-400 hover:bg-white/5 hover:text-white"
+                    : "text-slate-600 hover:bg-black/5 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon size={20} />
+                  <span className="font-bold text-sm">{link.label}</span>
+                </div>
+                {isActive && <ChevronRight size={14} />}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="px-6 mt-10 space-y-2 border-t pt-10">
+          <button onClick={() => handleNavigate("/profile")} className="w-full text-left py-2">My Profile</button>
+          <button onClick={() => handleNavigate("/settings")} className="w-full text-left py-2">Settings</button>
+          <button onClick={handleLogout} className="w-full text-left py-2 text-red-500">Logout</button>
+        </div>
       </div>
     </>
   );

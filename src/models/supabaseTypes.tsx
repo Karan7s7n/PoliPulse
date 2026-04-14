@@ -18,6 +18,18 @@ export interface Policy {
   client_type: string;
   remarks: string;
   renewal_date: string;
+  user_id?: string;
+  creator_name?: string; // 🔐 ADMIN ONLY TRACKING
+}
+
+// Profile interface
+export interface Profile {
+  id: string;
+  email: string;
+  subscription_tier: "free" | "premium";
+  status: "active" | "blocked";
+  updated_at?: string;
+  created_at?: string;
 }
 
 // Supabase Database type
@@ -26,8 +38,13 @@ export interface Database {
     Tables: {
       policy: {
         Row: Policy;
-        Insert: Omit<Policy, 'id'>;
-        Update: Partial<Omit<Policy, 'id'>>;
+        Insert: Omit<Policy, "id">;
+        Update: Partial<Omit<Policy, "id">>;
+      };
+      profiles: {
+        Row: Profile;
+        Insert: Omit<Profile, "id">;
+        Update: Partial<Omit<Profile, "id">>;
       };
     };
     Views: {};

@@ -10,13 +10,14 @@ import {
   FaLinkedin,
   FaMicrosoft,
 } from "react-icons/fa";
-import "bootstrap/dist/css/bootstrap.min.css";
+import { useTheme } from "../context/ThemeContext";
+import logoDark from "../assets/logo-dark.png";
+import logoLight from "../assets/logo-light.png";
 
-interface AuthPageProps {
-  darkMode: boolean;
-}
+interface AuthPageProps {}
 
-const AuthPage: React.FC<AuthPageProps> = ({ darkMode }) => {
+const AuthPage: React.FC<AuthPageProps> = () => {
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   const [isLogin, setIsLogin] = useState(true);
@@ -25,9 +26,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ darkMode }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // -------------------------------
-  // ✔ SIGN IN / SIGN UP
-  // -------------------------------
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -40,15 +38,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ darkMode }) => {
           password,
         });
         if (error) throw error;
-
         setMessage("✅ Logged in successfully!");
-
-        // Redirect to home after login
-        setTimeout(() => navigate("/"), 500);
+        setTimeout(() => navigate("/dashboard"), 500);
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-
         setMessage("✅ Signup successful! Check your email to verify your account.");
       }
     } catch (err: any) {
@@ -58,23 +52,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ darkMode }) => {
     }
   };
 
-  // -------------------------------
-  // ✔ FORGOT PASSWORD
-  // -------------------------------
   const handleForgotPassword = async () => {
     if (!email) return setMessage("⚠️ Enter your email to reset password.");
-
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + "/reset-password",
     });
-
     if (error) setMessage(`❌ ${error.message}`);
     else setMessage("✅ Password reset link sent to your email.");
   };
 
-  // -------------------------------
-  // ✔ OAUTH LOGIN
-  // -------------------------------
   const handleOAuthLogin = async (
     provider: "google" | "github" | "linkedin" | "azure"
   ) => {
@@ -83,209 +69,168 @@ const AuthPage: React.FC<AuthPageProps> = ({ darkMode }) => {
       provider,
       options: { redirectTo: window.location.origin },
     });
-
     if (error) {
       setMessage(`❌ ${error.message}`);
       setLoading(false);
     }
   };
 
-  // -------------------------------
-  // JSX SECTION
-  // -------------------------------
   return (
     <div
-      className="container-fluid vh-100 d-flex align-items-center justify-content-center"
-      style={{
-        background: darkMode
-          ? "linear-gradient(135deg, #121212, #1c1c1c)"
-          : "linear-gradient(135deg, #f8f9fa, #e9ecef)",
-      }}
+      className={`w-full min-h-screen flex items-center justify-center transition-colors duration-500 ${isDark ? "bg-zinc-950" : "bg-slate-50"}`}
     >
       <motion.div
-        className="row w-75 shadow-lg rounded-4 overflow-hidden"
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
+        className={`flex flex-col md:flex-row w-11/12 md:w-3/4 lg:w-2/3 shadow-[0_50px_100px_rgba(0,0,0,0.25)] rounded-[3rem] overflow-hidden border ${isDark ? 'border-white/5' : 'border-black/5'}`}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
       >
         {/* Left Section */}
         <div
-          className="col-md-6 d-flex flex-column justify-content-center text-center p-5"
+          className="w-full md:w-1/2 flex flex-col justify-center text-center p-12 relative overflow-hidden"
           style={{
-            background: darkMode
-              ? "linear-gradient(135deg, #2a2a2a, #3b3b3b)"
-              : "linear-gradient(135deg, #363434, #6b6767)",
-            color: darkMode ? "#f1f1f1" : "#212529",
+            background: isDark
+              ? "linear-gradient(135deg, #18181b, #27272a)"
+              : "linear-gradient(135deg, #4f46e5, #6366f1)",
+            color: "#fff",
           }}
         >
-          <h1
-            className="fw-bold mb-3"
-            style={{
-              color: darkMode ? "#212529" : "#f8f9fa",
-            }}
-          >
-            WELCOME
-          </h1>
-
-          <p className="mb-0">
-            Manage your insurance policies easily with{" "}
-            <strong
-              style={{
-                color: darkMode ? "#212529" : "#f8f9fa",
-              }}
-            >
+          <div className="relative z-10 flex flex-col items-center">
+            <img src={isDark ? logoLight : logoDark} alt="PoliPulse Logo" className="w-24 h-24 mb-6 rounded-3xl shadow-2xl transform hover:rotate-6 transition-all" />
+            <h1 className="font-black mb-2 text-5xl tracking-tighter uppercase">
               PoliPulse
-            </strong>
-          </p>
+            </h1>
+            <p className="text-xl font-bold opacity-80 uppercase tracking-widest text-[10px]">
+              The Intelligence Layer for Modern Insurance
+            </p>
+            <div className="mt-8 flex justify-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-white opacity-20"></div>
+              <div className="w-2 h-2 rounded-full bg-white opacity-40"></div>
+              <div className="w-2 h-2 rounded-full bg-white opacity-20"></div>
+            </div>
+          </div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
         </div>
 
         {/* Right Section */}
         <div
-          className="col-md-6 p-5"
-          style={{
-            backgroundColor: darkMode ? "#1f1f1f" : "#ffffff",
-            color: darkMode ? "#f8f9fa" : "#212529",
-          }}
+          className={`w-full md:w-1/2 p-12 flex flex-col justify-center ${isDark ? "bg-zinc-900 border-l border-white/5" : "bg-white border-l border-black/5"}`}
         >
-          <h3 className="fw-bold mb-4 text-center">
-            {isLogin ? "Sign In" : "Sign Up"}
-          </h3>
+          <div className="max-w-sm mx-auto w-full">
+            <h3 className={`font-black mb-8 text-3xl tracking-tight text-center ${isDark ? "text-white" : "text-slate-900"}`}>
+              {isLogin ? "Sign In" : "Register"}
+            </h3>
 
-          <form onSubmit={handleAuth}>
-            {/* Email */}
-            <div className="mb-3 input-group">
-              <span
-                className={`input-group-text ${
-                  darkMode ? "bg-dark text-light border-secondary" : ""
-                }`}
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="relative group">
+                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isDark ? "text-zinc-500 group-focus-within:text-indigo-500" : "text-slate-400 group-focus-within:text-indigo-600"}`}>
+                  <FaUser />
+                </div>
+                <input
+                  type="email"
+                  className={`w-full pl-12 pr-6 py-4 rounded-2xl border outline-none font-bold transition-all ${
+                    isDark
+                      ? "bg-zinc-950 text-white border-zinc-800 focus:border-indigo-500"
+                      : "bg-slate-50 text-slate-900 border-slate-200 focus:border-indigo-600"
+                  }`}
+                  placeholder="Email Address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="relative group">
+                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isDark ? "text-zinc-500 group-focus-within:text-indigo-500" : "text-slate-400 group-focus-within:text-indigo-600"}`}>
+                  <FaLock />
+                </div>
+                <input
+                  type="password"
+                  className={`w-full pl-12 pr-6 py-4 rounded-2xl border outline-none font-bold transition-all ${
+                    isDark
+                      ? "bg-zinc-950 text-white border-zinc-800 focus:border-indigo-500"
+                      : "bg-slate-50 text-slate-900 border-slate-200 focus:border-indigo-600"
+                  }`}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end p-1">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className={`text-[10px] uppercase font-black tracking-widest transition-opacity hover:opacity-100 opacity-40 ${isDark ? "text-indigo-400" : "text-indigo-600"}`}
+                >
+                  Reset Password?
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full font-black uppercase tracking-widest text-xs py-5 rounded-[2rem] shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+                style={{
+                  background: isDark
+                    ? "#fff"
+                    : "#1e1b4b",
+                  color: isDark ? "#000" : "#fff",
+                }}
               >
-                <FaUser />
-              </span>
-              <input
-                type="email"
-                className={`form-control ${
-                  darkMode
-                    ? "bg-dark text-light border-secondary"
-                    : "bg-white text-dark"
-                }`}
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+                {loading ? "Authenticating..." : isLogin ? "Access Account" : "Create Account"}
+              </button>
+            </form>
+
+            <div className="flex items-center gap-4 my-8">
+                <div className="h-[1px] flex-1 bg-black/5 dark:bg-white/5"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-20">Secure Login</span>
+                <div className="h-[1px] flex-1 bg-black/5 dark:bg-white/5"></div>
             </div>
 
-            {/* Password */}
-            <div className="mb-3 input-group">
-              <span
-                className={`input-group-text ${
-                  darkMode ? "bg-dark text-light border-secondary" : ""
-                }`}
-              >
-                <FaLock />
-              </span>
-              <input
-                type="password"
-                className={`form-control ${
-                  darkMode
-                    ? "bg-dark text-light border-secondary"
-                    : "bg-white text-dark"
-                }`}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+            {/* OAuth */}
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { id: "google" as const, icon: <FaGoogle /> },
+                { id: "github" as const, icon: <FaGithub /> },
+                { id: "linkedin" as const, icon: <FaLinkedin /> },
+                { id: "azure" as const, icon: <FaMicrosoft /> }
+              ].map(provider => (
+                <button
+                  key={provider.id}
+                  onClick={() => handleOAuthLogin(provider.id)}
+                  className={`flex justify-center items-center py-4 rounded-2xl border transition-all text-xl ${
+                    isDark 
+                      ? "bg-white/5 border-white/5 hover:bg-white/10 text-white" 
+                      : "bg-slate-50 border-slate-100 hover:bg-slate-100 text-slate-900"
+                  }`}
+                >
+                  {provider.icon}
+                </button>
+              ))}
             </div>
 
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <small
-                role="button"
-                onClick={handleForgotPassword}
-                className={darkMode ? "text-info" : "text-primary"}
+            {message && (
+              <motion.p 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center mt-6 text-[10px] font-black uppercase tracking-widest text-indigo-500"
               >
-                Forgot Password?
-              </small>
+                {message}
+              </motion.p>
+            )}
+
+            {/* Toggle Sign In / Sign Up */}
+            <div className="text-center mt-10">
+              <button
+                onClick={() => setIsLogin(!isLogin)}
+                className={`text-[10px] font-black uppercase tracking-widest border-b-2 hover:border-indigo-500 transition-all ${isDark ? 'text-white border-white/10' : 'text-slate-900 border-black/10'}`}
+              >
+                {isLogin ? "Need an entry? Register Free" : "Member? Sign In Now"}
+              </button>
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn w-100 fw-semibold border-0 rounded-pill py-2 mt-2"
-              style={{
-                background: darkMode
-                  ? "linear-gradient(90deg, #4d4d4e, #7b7a7c)"
-                  : "linear-gradient(90deg, #404041, #696a6b)",
-                color: "#fff",
-                boxShadow: "0 3px 10px rgba(0,0,0,0.2)",
-              }}
-            >
-              {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
-            </button>
-          </form>
-
-          <div className="text-center my-3 text-muted">or</div>
-
-          {/* OAuth */}
-          <div className="d-flex justify-content-around">
-            <button
-              onClick={() => handleOAuthLogin("google")}
-              className={`btn ${
-                darkMode ? "btn-outline-light border-secondary" : "btn-outline-dark"
-              }`}
-            >
-              <FaGoogle />
-            </button>
-
-            <button
-              onClick={() => handleOAuthLogin("github")}
-              className={`btn ${
-                darkMode ? "btn-outline-light border-secondary" : "btn-outline-dark"
-              }`}
-            >
-              <FaGithub />
-            </button>
-
-            <button
-              onClick={() => handleOAuthLogin("linkedin")}
-              className={`btn ${
-                darkMode ? "btn-outline-light border-secondary" : "btn-outline-dark"
-              }`}
-            >
-              <FaLinkedin />
-            </button>
-
-            <button
-              onClick={() => handleOAuthLogin("azure")}
-              className={`btn ${
-                darkMode ? "btn-outline-light border-secondary" : "btn-outline-dark"
-              }`}
-            >
-              <FaMicrosoft />
-            </button>
-          </div>
-
-          {/* Message */}
-          {message && (
-            <p className="text-center mt-3 small text-warning">{message}</p>
-          )}
-
-          {/* Toggle Sign In / Sign Up */}
-          <div className="text-center mt-4">
-            <small>
-              {isLogin ? "Don’t have an account?" : "Already registered?"}
-            </small>
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="ms-2 border-0 rounded-pill px-3 py-1 fw-semibold text-white"
-              style={{
-                background: darkMode
-                  ? "linear-gradient(90deg, #4d4d4e, #7b7a7c)"
-                  : "linear-gradient(90deg, #404041, #696a6b)",
-              }}
-            >
-              {isLogin ? "Sign Up" : "Sign In"}
-            </button>
           </div>
         </div>
       </motion.div>

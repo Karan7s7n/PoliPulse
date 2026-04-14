@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../models/supabaseClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams } from "react-router-dom";
 import type { Policy } from "../models/supabaseTypes";
@@ -9,33 +9,24 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaTimesCircle,
+  FaBuilding,
+  FaSearch
 } from "react-icons/fa";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import lightLogo from "../assets/logo-light.png";
-import darkLogo from "../assets/logo-dark.png";
-import "../pages/HomePage.css";
+import { useTheme } from "../context/ThemeContext";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const supabase = createClient(
-  "https://shmvmxxhxvrnhlwdjcmp.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNobXZteHhoeHZybmhsd2RqY21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDAyMzMsImV4cCI6MjA3NTQ3NjIzM30.HpC27sRY0sxlz6QzqdKCzJJpDRnHEFT2uGcPl-gXo48"
-);
+interface CompanyDetailsProps {}
 
-interface CompanyDetailsProps {
-  darkMode: boolean;
-}
-
-function CompanyDetails({ darkMode }: CompanyDetailsProps) {
+function CompanyDetails({}: CompanyDetailsProps) {
   const { id: companyId } = useParams<{ id: string }>();
+  const { isDark } = useTheme();
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [companyName, setCompanyName] = useState<string>(companyId || "");
-
-  // NEW FIX
   const [companySelected, setCompanySelected] = useState(false);
-
   const [filter, setFilter] = useState<"All" | "Active" | "Expiring Soon" | "Expired">("All");
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +61,7 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
       if (error) throw error;
       setPolicies(data || []);
       setCompanyName(company);
-      setCompanySelected(true); // FIX
+      setCompanySelected(true);
     } catch (err) {
       console.error(err);
       setPolicies([]);
@@ -80,7 +71,8 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
 
   /** Load company policies if navigated via companyId */
   useEffect(() => {
-    if (companyId) fetchCompanyPolicies(companyId);
+    if (companyId && companyId !== "_") fetchCompanyPolicies(companyId);
+    else setLoading(false);
   }, [companyId]);
 
   /** Handle outside click for autocomplete */
@@ -119,10 +111,7 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
     setDropdownOpen(false);
     setSearchText("");
     setHighlightedIndex(0);
-
-    // FIX
     setCompanySelected(true);
-
     fetchCompanyPolicies(company);
   };
 
@@ -159,8 +148,7 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
   };
 
   /** Icons */
-  const icons: Record<FilterKey, React.ReactNode>
-= {
+  const icons: Record<FilterKey, React.ReactNode> = {
     All: <FaClipboardList />,
     Active: <FaCheckCircle />,
     "Expiring Soon": <FaExclamationTriangle />,
@@ -168,18 +156,11 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
   };
 
   /** Colors */
-  const lightColors: Record<FilterKey, string> = {
-    All: "bg-info text-white",
-    Active: "bg-success text-white",
-    "Expiring Soon": "bg-warning text-dark",
-    Expired: "bg-danger text-white",
-  };
-
-  const darkColors: Record<FilterKey, string> = {
-    All: "bg-info text-white",
-    Active: "bg-success text-white",
-    "Expiring Soon": "bg-warning text-dark",
-    Expired: "bg-danger text-white",
+  const colors: Record<FilterKey, string> = {
+    All: "bg-cyan-600 text-white shadow-cyan-600/20",
+    Active: "bg-emerald-600 text-white shadow-emerald-600/20",
+    "Expiring Soon": "bg-amber-500 text-slate-950 shadow-amber-500/20",
+    Expired: "bg-rose-600 text-white shadow-rose-600/20",
   };
 
   /** Charts Data */
@@ -192,7 +173,8 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
     labels: Object.keys(typeCounts),
     datasets: [{
       data: Object.values(typeCounts),
-      backgroundColor: ["#36A2EB", "#FF6384", "#FFCE56", "#4BC0C0", "#9966FF"],
+      backgroundColor: ["#6366f1", "#10b981", "#f59e0b", "#06b6d4", "#8b5cf6"],
+      borderWidth: 0,
     }]
   };
 
@@ -205,55 +187,58 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
     labels: Object.keys(statusCounts),
     datasets: [{
       data: Object.values(statusCounts),
-      backgroundColor: ["#28a745", "#ffc107", "#dc3545"],
+      backgroundColor: ["#10b981", "#f59e0b", "#ef4444"],
+      borderWidth: 0,
     }]
   };
 
   if (loading) {
     return (
-      <motion.div className={`d-flex flex-column align-items-center justify-content-center vh-100 ${darkMode ? "bg-dark text-light" : "bg-light text-dark"}`}>
-        <motion.img src={darkMode ? darkLogo : lightLogo} alt="PoliPulse Logo" style={{ width: 90, marginBottom: 16 }} />
-        <motion.h2 style={{ fontWeight: 700 }}>PoliPulse</motion.h2>
-      </motion.div>
+      <div className={`flex flex-col items-center justify-center min-h-screen ${isDark ? "bg-zinc-950 text-white" : "bg-slate-50 text-slate-900"}`}>
+        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        <h2 className="mt-6 font-black tracking-widest uppercase opacity-40">Loading Data</h2>
+      </div>
     );
   }
 
   return (
-    <motion.div className={`container mt-4 company-page ${darkMode ? "dark-mode" : ""}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+    <motion.div className="container mx-auto px-4 mt-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
 
       {/* Autocomplete */}
-      <div ref={dropdownRef} style={{ position: "relative" }} className="mb-4">
-        <input
-          type="text"
-          className="form-control"
-          placeholder={companyName && companyName !== "_" ? companyName : "Search Company..."}
-          value={searchText}
-          onChange={(e) => {
-            const text = e.target.value;
-            setSearchText(text);
-            setDropdownOpen(true);
-            setHighlightedIndex(0);
-
-            // FIX: Hide everything when input becomes empty
-            if (text === "") {
-              setCompanyName("");
-              setPolicies([]);
-              setCompanySelected(false);
-            }
-          }}
-          onKeyDown={handleKeyDown}
-        />
+      <div ref={dropdownRef} className="relative mb-10">
+        <div className={`flex items-center gap-4 px-6 py-4 rounded-[2rem] border transition-all shadow-xl ${isDark ? "bg-zinc-900 border-zinc-800 focus-within:border-indigo-500" : "bg-white border-slate-200 focus-within:border-indigo-500"}`}>
+          <FaSearch className="opacity-40 text-black dark:text-white" />
+          <input
+            type="text"
+            className="bg-transparent outline-none w-full text-lg font-bold text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40"
+            placeholder={companyName && companyName !== "_" ? companyName : "Search Insurance Company..."}
+            value={searchText}
+            onChange={(e) => {
+              const text = e.target.value;
+              setSearchText(text);
+              setDropdownOpen(true);
+              setHighlightedIndex(0);
+              if (text === "") {
+                setCompanyName("");
+                setPolicies([]);
+                setCompanySelected(false);
+              }
+            }}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
 
         {dropdownOpen && filteredCompanies.length > 0 && (
-          <div className="card shadow" style={{ position: "absolute", width: "100%", maxHeight: 250, overflowY: "auto", zIndex: 10 }}>
+          <div className={`shadow-2xl rounded-2xl mt-4 overflow-hidden absolute w-full max-h-[300px] overflow-y-auto z-[200] border ${isDark ? "bg-zinc-900 border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
             {filteredCompanies.map((c, index) => (
               <div
                 key={c}
-                className={`p-2 ${index === highlightedIndex ? "bg-primary text-white" : ""}`}
+                className={`px-6 py-4 font-bold flex items-center gap-3 transition-colors ${index === highlightedIndex ? "bg-indigo-600 text-white" : (isDark ? "hover:bg-white/5" : "hover:bg-slate-50")}`}
                 style={{ cursor: "pointer" }}
                 onMouseEnter={() => setHighlightedIndex(index)}
                 onClick={() => selectCompany(c)}
               >
+                <FaBuilding className="opacity-40" />
                 {c}
               </div>
             ))}
@@ -261,149 +246,73 @@ function CompanyDetails({ darkMode }: CompanyDetailsProps) {
         )}
       </div>
 
-      {/* Company Name */}
-      <h2 className={`mb-4 text-center ${darkMode ? "text-white" : ""}`}>{companyName || "Select Company"}</h2>
+      <div className="text-center mb-12">
+        <h2 className={`text-4xl font-black tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>{companyName && companyName !== "_" ? companyName : "Select a Company"}</h2>
+        <p className={`mt-2 font-bold uppercase tracking-[0.2em] text-[10px] opacity-40 ${isDark ? "text-indigo-400" : "text-indigo-600"}`}>Enterprise Analytics View</p>
+      </div>
 
-      {/* FIX: SHOW NOTHING UNTIL COMPANY SELECTED */}
       {companySelected && policies.length > 0 && (
-        <>
-          {/* Summary Cards */}
-          <div className="row mb-4">
-            {[{
-              title: "Total Premium",
-              value: `₹${totalPremium.toLocaleString()}`
-            }, {
-              title: "Total Policies",
-              value: totalPolicies
-            }, {
-              title: "Expiring This Month",
-              value: policiesExpiringThisMonth
-            }].map((card, idx) => (
-              <div className="col-md-4 mb-3" key={idx}>
-                <div
-                  className="card text-center p-3 shadow"
-                  style={{
-                    background: darkMode
-                      ? "rgba(255, 255, 255, 0.05)"
-                      : "rgba(255, 255, 255, 0.4)",
-                    backdropFilter: "blur(15px)",
-                    borderRadius: "1rem",
-                    border: darkMode
-                      ? "1px solid rgba(255,255,255,0.2)"
-                      : "1px solid rgba(0,0,0,0.1)",
-                    color: darkMode ? "white" : "black",
-                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget;
-                    el.style.transform = "translateY(-5px)";
-                    el.style.boxShadow = "0 10px 20px rgba(0,0,0,0.15)";
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget;
-                    el.style.transform = "translateY(0)";
-                    el.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
-                  }}
-                >
-                  <h6>{card.title}</h6>
-                  <p className="display-6">{card.value}</p>
+        <AnimatePresence mode="wait">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+              {[
+                { title: "Portfolio Value", value: `₹${totalPremium.toLocaleString()}`, color: "from-indigo-600 to-blue-600" },
+                { title: "Total Policies", value: totalPolicies, color: "from-emerald-600 to-teal-600" },
+                { title: "Critical Renewals", value: policiesExpiringThisMonth, color: "from-rose-600 to-orange-600" }
+              ].map((card, idx) => (
+                <div key={idx} className={`p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group border ${isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-slate-100"}`}>
+                  <div className="relative z-10">
+                    <h6 className={`uppercase font-black text-[10px] tracking-[0.2em] opacity-40 mb-3 ${isDark ? "text-white" : "text-slate-900"}`}>{card.title}</h6>
+                    <p className={`text-4xl font-black tracking-tighter ${isDark ? "text-white" : "text-slate-900"}`}>{card.value}</p>
+                  </div>
+                  <div className={`absolute -right-10 -bottom-10 w-40 h-40 bg-gradient-to-br ${card.color} opacity-[0.05] group-hover:opacity-10 transition-opacity rounded-full`}></div>
+                </div>
+              ))}
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+              <div className={`p-10 rounded-[3rem] shadow-2xl border ${isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-slate-100"}`}>
+                <h6 className={`text-center font-black uppercase tracking-[0.2em] text-xs mb-8 opacity-40 ${isDark ? "text-white" : "text-slate-900"}`}>Policy Mix Analysis</h6>
+                <div className="max-w-[280px] mx-auto">
+                    <Pie data={typeData} options={{ plugins: { legend: { position: 'bottom', labels: { color: isDark ? '#fff' : '#000', font: { weight: 'bold', size: 10 } } } } }} />
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Charts */}
-          <div className="row mb-4">
-            <div className="col-md-6 mb-3">
-              <div
-                className="card p-3 shadow"
-                style={{
-                  background: darkMode
-                    ? "rgba(255, 255, 255, 0.05)"
-                    : "rgba(255, 255, 255, 0.4)",
-                  backdropFilter: "blur(15px)",
-                  borderRadius: "1rem",
-                  border: darkMode
-                    ? "1px solid rgba(255,255,255,0.2)"
-                    : "1px solid rgba(0,0,0,0.1)",
-                  color: darkMode ? "white" : "black",
-                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget;
-                  el.style.transform = "translateY(-5px)";
-                  el.style.boxShadow = "0 10px 20px rgba(0,0,0,0.15)";
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget;
-                  el.style.transform = "translateY(0)";
-                  el.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
-                }}
-              >
-                <h6 className="text-center">Insurance Type Distribution</h6>
-                <Pie data={typeData} />
+              <div className={`p-10 rounded-[3rem] shadow-2xl border ${isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-slate-100"}`}>
+                <h6 className={`text-center font-black uppercase tracking-[0.2em] text-xs mb-8 opacity-40 ${isDark ? "text-white" : "text-slate-900"}`}>Renewal Status Analytics</h6>
+                <div className="max-w-[280px] mx-auto">
+                    <Pie data={statusData} options={{ plugins: { legend: { position: 'bottom', labels: { color: isDark ? '#fff' : '#000', font: { weight: 'bold', size: 10 } } } } }} />
+                </div>
               </div>
             </div>
 
-            <div className="col-md-6 mb-3">
-              <div
-                className="card p-3 shadow"
-                style={{
-                  background: darkMode
-                    ? "rgba(255, 255, 255, 0.05)"
-                    : "rgba(255, 255, 255, 0.4)",
-                  backdropFilter: "blur(15px)",
-                  borderRadius: "1rem",
-                  border: darkMode
-                    ? "1px solid rgba(255,255,255,0.2)"
-                    : "1px solid rgba(0,0,0,0.1)",
-                  color: darkMode ? "white" : "black",
-                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget;
-                  el.style.transform = "translateY(-5px)";
-                  el.style.boxShadow = "0 10px 20px rgba(0,0,0,0.15)";
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget;
-                  el.style.transform = "translateY(0)";
-                  el.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
-                }}
-              >
-                <h6 className="text-center">Status Distribution</h6>
-                <Pie data={statusData} />
-              </div>
-            </div>
-          </div>
-
-          {/* Filter Cards */}
-          <div className="row mb-4">
-            {filterKeys.map(key => (
-              <div className="col-md-3 mb-3" key={key}>
+            {/* Filter Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+              {filterKeys.map((key) => (
                 <motion.div
-                  className={`card text-center shadow-hover status-card ${filter === key ? "selected-card" : ""} ${darkMode ? darkColors[key] : lightColors[key]}`}
+                  key={key}
+                  className={`rounded-[2.5rem] text-center shadow-xl p-8 transition-all relative overflow-hidden group ${filter === key ? "ring-4 ring-indigo-500 scale-105" : ""} ${colors[key]}`}
                   style={{ cursor: "pointer" }}
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ y: -5 }}
                   onClick={() => setFilter(key)}
                 >
-                  <div className="card-body d-flex flex-column align-items-center">
-                    <div style={{ fontSize: "1.5rem" }}>{icons[key]}</div>
-                    <h5 className="card-title">{key}</h5>
-                    <p className="card-text display-6">{counts[key]}</p>
+                  <div className="flex flex-col items-center relative z-10">
+                    <div className="text-3xl mb-4 bg-white/20 p-3 rounded-2xl">{icons[key]}</div>
+                    <h5 className="font-black text-[10px] uppercase tracking-[0.2em] opacity-80">{key}</h5>
+                    <p className="text-4xl font-black mt-2 tracking-tighter">{counts[key]}</p>
                   </div>
                 </motion.div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Policy Table */}
-          <AnimatePresence mode="wait">
-            <motion.div key={filter} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
-              <PolicyTable policies={filteredPolicies} setPolicies={setPolicies} darkMode={darkMode} />
+            {/* Policy Table */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-20">
+              <PolicyTable policies={filteredPolicies} setPolicies={setPolicies} />
             </motion.div>
-          </AnimatePresence>
-        </>
+          </motion.div>
+        </AnimatePresence>
       )}
 
     </motion.div>
