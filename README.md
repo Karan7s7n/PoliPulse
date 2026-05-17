@@ -146,5 +146,15 @@ Multi-language support
 
 📄 License
 
-Made by Karan Singh Negi 
+👨‍💻 Developer
+
+Karan Singh Negi
+Frontend Developer | React | TypeScript | JavaScript
+
+GitHub: https://github.com/Karan7s7n
+
+Portfolio: 
+
+LinkedIn: www.linkedin.com/in/karan-singh-negi-0098532b5
+
 All rights Reserved
